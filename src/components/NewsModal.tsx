@@ -28,6 +28,9 @@ interface NewsModalProps {
 export function NewsModal({ article, isOpen, onClose, onAnalyze, isAnalyzing }: NewsModalProps) {
   const [showDetail, setShowDetail] = useState(false)
 
+  // Debug: Log quando il modal e' aperto
+  console.log('[v0] NewsModal render - isOpen:', isOpen, 'article:', article?.id, 'onAnalyze:', !!onAnalyze, 'aiSummary:', article?.aiSummary)
+
   if (!article) return null
 
   const sentimentVariant = {
@@ -165,11 +168,13 @@ export function NewsModal({ article, isOpen, onClose, onAnalyze, isAnalyzing }: 
                 <ChevronRight className="w-4 h-4 ml-auto" />
               </Button>
 
-              {!article.aiSummary && onAnalyze && (
+              {/* Debug: sempre mostra il bottone per test */}
+              {onAnalyze && (
                 <Button
                   variant="secondary"
                   onClick={handleAnalyze}
-                  disabled={isAnalyzing}
+                  disabled={isAnalyzing || !!article.aiSummary}
+                  title={article.aiSummary ? 'Gia analizzato' : 'Analizza con AI'}
                 >
                   {isAnalyzing ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
