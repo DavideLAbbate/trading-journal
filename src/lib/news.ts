@@ -1,12 +1,4 @@
-import Parser from 'rss-parser'
 import type { NewsArticle, NewsPoint } from '../types/news'
-
-// RSS Parser instance
-const parser = new Parser({
-  customFields: {
-    item: ['media:content', 'media:thumbnail', 'enclosure'],
-  },
-})
 
 // RSS Feed sources con coordinate geografiche
 const RSS_FEEDS = [
@@ -63,25 +55,40 @@ function generateArticleId(title: string, pubDate: string, source: string): stri
 }
 
 /**
- * Estrai URL immagine da un item RSS
+ * Estrai testo da un elemento XML
  */
-function extractImageUrl(item: Parser.Item & Record<string, unknown>): string | null {
+function getElementText(item: Element, tagName: string): string | null {
+  const element = item.querySelector(tagName)
+  return element?.textContent?.trim() || null
+}
+
+/**
+ * Estrai URL immagine da un item RSS usando DOMParser
+ */
+function extractImageUrl(item: Element): string | null {
   // Prova media:content
-  const mediaContent = item['media:content'] as { $?: { url?: string } } | undefined
-  if (mediaContent?.$?.url) {
-    return mediaContent.$.url
+  const mediaContent = item.querySelector('media\\:content, content')
+  if (mediaContent?.getAttribute('url')) {
+    return mediaContent.getAttribute('url')
   }
   
   // Prova media:thumbnail
-  const mediaThumbnail = item['media:thumbnail'] as { $?: { url?: string } } | undefined
-  if (mediaThumbnail?.$?.url) {
-    return mediaThumbnail.$.url
+  const mediaThumbnail = item.querySelector('media\\:thumbnail, thumbnail')
+  if (mediaThumbnail?.getAttribute('url')) {
+    return mediaThumbnail.getAttribute('url')
   }
   
   // Prova enclosure
-  const enclosure = item.enclosure as { url?: string } | undefined
-  if (enclosure?.url) {
-    return enclosure.url
+  const enclosure = item.querySelector('enclosure')
+  if (enclosure?.getAttribute('url')) {
+    return enclosure.getAttribute('url')
+  }
+
+  // Cerca immagine nel contenuto
+  const description = getElementText(item, 'description') || ''
+  const imgMatch = description.match(/<img[^>]+src=["']([^"']+)["']/)
+  if (imgMatch?.[1]) {
+    return imgMatch[1]
   }
   
   return null
@@ -97,30 +104,61 @@ interface FeedConfig {
 }
 
 /**
+ * Parse RSS XML usando DOMParser nativo del browser
+ */
+function parseRSSXML(xmlText: string): Element[] {
+  const parser = new DOMParser()
+  const doc = parser.parseFromString(xmlText, 'text/xml')
+  
+  // Controlla errori di parsing
+  const parseError = doc.querySelector('parsererror')
+  if (parseError) {
+    throw new Error('Failed to parse RSS XML')
+  }
+  
+  // Ottieni tutti gli item
+  const items = doc.querySelectorAll('item')
+  return Array.from(items)
+}
+
+/**
  * Fetch RSS feed singolo
  */
 async function fetchRSSFeed(feedConfig: FeedConfig): Promise<NewsArticle[]> {
   try {
     // Usa un proxy CORS per evitare problemi di cross-origin
     const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(feedConfig.url)}`
-    const feed = await parser.parseURL(proxyUrl)
+    const response = await fetch(proxyUrl)
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error: ${response.status}`)
+    }
+    
+    const xmlText = await response.text()
+    const items = parseRSSXML(xmlText)
     
     const articles: NewsArticle[] = []
     
-    for (const item of feed.items.slice(0, 10)) {
+    for (const item of items.slice(0, 10)) {
       // Aggiungi jitter alle coordinate per non sovrapporre i punti
       const jitter = () => (Math.random() - 0.5) * 5
       
+      const title = getElementText(item, 'title') || 'No title'
+      const pubDate = getElementText(item, 'pubDate') || new Date().toISOString()
+      const description = getElementText(item, 'description')
+      const link = getElementText(item, 'link')
+      const creator = getElementText(item, 'dc\\:creator') || getElementText(item, 'author')
+      
       const article: NewsArticle = {
-        id: generateArticleId(item.title || '', item.pubDate || '', feedConfig.source),
-        title: item.title || 'No title',
-        description: item.contentSnippet || item.content || null,
-        content: item.content || item.contentSnippet || null,
+        id: generateArticleId(title, pubDate, feedConfig.source),
+        title,
+        description: description ? description.replace(/<[^>]*>/g, '').trim() : null,
+        content: description,
         source: { id: feedConfig.source.toLowerCase().replace(/\s/g, '-'), name: feedConfig.source },
-        author: item.creator || null,
-        publishedAt: item.pubDate || new Date().toISOString(),
-        url: item.link || '',
-        urlToImage: extractImageUrl(item as Parser.Item & Record<string, unknown>),
+        author: creator,
+        publishedAt: pubDate,
+        url: link || '',
+        urlToImage: extractImageUrl(item),
         country: feedConfig.country,
         countryCode: feedConfig.countryCode,
         coordinates: {
