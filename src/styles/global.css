@@ -1,23 +1,32 @@
 @import "tailwindcss";
 
 :root {
-  --background: #0a0a0a;
+  --background: #050507;
   --foreground: #fafafa;
-  --card: #111111;
+  --card: #0c0c0f;
   --card-foreground: #fafafa;
   --primary: #3b82f6;
   --primary-foreground: #ffffff;
-  --secondary: #1e293b;
+  --secondary: #1a1a2e;
   --secondary-foreground: #fafafa;
-  --muted: #27272a;
-  --muted-foreground: #a1a1aa;
-  --accent: #10b981;
+  --muted: #18181b;
+  --muted-foreground: #71717a;
+  --accent: #06b6d4;
   --accent-foreground: #ffffff;
   --destructive: #ef4444;
   --destructive-foreground: #ffffff;
   --border: #27272a;
   --ring: #3b82f6;
-  --radius: 0.5rem;
+  --radius: 0.75rem;
+  
+  /* Sentiment colors */
+  --sentiment-positive: #10b981;
+  --sentiment-negative: #ef4444;
+  --sentiment-neutral: #f59e0b;
+  
+  /* Glassmorphism */
+  --glass-bg: rgba(12, 12, 15, 0.8);
+  --glass-border: rgba(255, 255, 255, 0.08);
 }
 
 * {
@@ -37,34 +46,87 @@ body {
   min-height: 100vh;
 }
 
-/* Modal animations */
+/* Animations */
 @keyframes fade-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
 }
 
 @keyframes scale-in {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
 }
 
-.animate-fade-in {
-  animation: fade-in 0.2s ease-out;
+@keyframes zoom-in-95 {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
 }
 
-.animate-scale-in {
-  animation: scale-in 0.2s ease-out;
+@keyframes zoom-out-95 {
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0; transform: scale(0.95); }
 }
+
+@keyframes slide-in-from-top {
+  from { transform: translateY(-10px); }
+  to { transform: translateY(0); }
+}
+
+@keyframes slide-in-from-bottom {
+  from { transform: translateY(10px); }
+  to { transform: translateY(0); }
+}
+
+@keyframes slide-in-from-left {
+  from { transform: translateX(-10px); }
+  to { transform: translateX(0); }
+}
+
+@keyframes slide-in-from-right {
+  from { transform: translateX(10px); }
+  to { transform: translateX(0); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 8px 2px currentColor; }
+  50% { box-shadow: 0 0 16px 4px currentColor; }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-in {
+  animation-duration: 200ms;
+  animation-fill-mode: both;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.animate-out {
+  animation-duration: 150ms;
+  animation-fill-mode: both;
+  animation-timing-function: ease-in;
+}
+
+.fade-in-0 { animation-name: fade-in; }
+.fade-out-0 { animation-name: fade-out; }
+.zoom-in-95 { animation-name: zoom-in-95; }
+.zoom-out-95 { animation-name: zoom-out-95; }
+.slide-in-from-top-2 { animation-name: slide-in-from-top; }
+.slide-in-from-bottom-2 { animation-name: slide-in-from-bottom; }
+.slide-in-from-left-2 { animation-name: slide-in-from-left; }
+.slide-in-from-right-2 { animation-name: slide-in-from-right; }
+
+.animate-fade-in { animation: fade-in 0.2s ease-out; }
+.animate-scale-in { animation: scale-in 0.2s ease-out; }
+.animate-pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
+.animate-spin { animation: spin 1s linear infinite; }
 
 /* Hide Cesium default credits */
 .cesium-credit-logoContainer,
