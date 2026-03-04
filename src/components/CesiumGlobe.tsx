@@ -7,7 +7,7 @@ import {
   Terrain,
   Viewer
 } from 'cesium'
-import 'cesium/Widgets/widgets.css'
+// CSS handled automatically by vite-plugin-cesium
 
 interface CesiumGlobeProps {
   className?: string
