@@ -1,161 +1,184 @@
-import type { NewsArticle, NewsApiResponse, NewsApiArticle, NewsPoint } from '../types/news'
-import { getCoordinatesByCountryCode, newsApiCountries, type NewsApiCountry } from '../data/country-coordinates'
+import Parser from 'rss-parser'
+import type { NewsArticle, NewsPoint } from '../types/news'
 
-const NEWS_API_BASE = 'https://newsapi.org/v2'
-const API_KEY = import.meta.env.VITE_NEWS_API_KEY || ''
+// RSS Parser instance
+const parser = new Parser({
+  customFields: {
+    item: ['media:content', 'media:thumbnail', 'enclosure'],
+  },
+})
+
+// RSS Feed sources con coordinate geografiche
+const RSS_FEEDS = [
+  { 
+    url: 'https://feeds.bbci.co.uk/news/rss.xml', 
+    source: 'BBC News',
+    country: 'United Kingdom',
+    countryCode: 'GB',
+    lat: 51.5074,
+    lng: -0.1278,
+  },
+  { 
+    url: 'https://rss.cnn.com/rss/edition.rss', 
+    source: 'CNN',
+    country: 'United States',
+    countryCode: 'US',
+    lat: 40.7128,
+    lng: -74.0060,
+  },
+  { 
+    url: 'https://feeds.bbci.co.uk/news/world/rss.xml', 
+    source: 'BBC World',
+    country: 'United Kingdom',
+    countryCode: 'GB',
+    lat: 52.4862,
+    lng: -1.8904,
+  },
+  { 
+    url: 'https://rss.cnn.com/rss/money_news_international.rss', 
+    source: 'CNN Money',
+    country: 'United States',
+    countryCode: 'US',
+    lat: 34.0522,
+    lng: -118.2437,
+  },
+]
 
 // Cache per evitare chiamate ripetute
 const newsCache = new Map<string, { data: NewsArticle[]; timestamp: number }>()
 const CACHE_DURATION = 5 * 60 * 1000 // 5 minuti
 
 /**
- * Genera un ID univoco per l'articolo (supporta Unicode)
+ * Genera un ID univoco per l'articolo
  */
-function generateArticleId(article: NewsApiArticle, country: string): string {
-  const hash = `${article.title || ''}-${article.publishedAt || ''}-${country}`
-  // Simple hash function that works with Unicode
+function generateArticleId(title: string, pubDate: string, source: string): string {
+  const hash = `${title || ''}-${pubDate || ''}-${source}`
   let hashCode = 0
   for (let i = 0; i < hash.length; i++) {
     const char = hash.charCodeAt(i)
     hashCode = ((hashCode << 5) - hashCode) + char
-    hashCode = hashCode & hashCode // Convert to 32bit integer
+    hashCode = hashCode & hashCode
   }
-  return `news_${Math.abs(hashCode).toString(36)}_${country}`
+  return `rss_${Math.abs(hashCode).toString(36)}`
 }
 
 /**
- * Trasforma un articolo NewsAPI in NewsArticle con coordinate
+ * Estrai URL immagine da un item RSS
  */
-function transformArticle(article: NewsApiArticle, countryCode: string): NewsArticle | null {
-  const coords = getCoordinatesByCountryCode(countryCode)
-  if (!coords) return null
-
-  // Aggiungi un po' di variazione alle coordinate per non sovrapporre i punti
-  const jitter = () => (Math.random() - 0.5) * 3
-
-  return {
-    id: generateArticleId(article, countryCode),
-    title: article.title,
-    description: article.description,
-    content: article.content,
-    source: article.source,
-    author: article.author,
-    publishedAt: article.publishedAt,
-    url: article.url,
-    urlToImage: article.urlToImage,
-    country: coords.name,
-    countryCode: countryCode.toUpperCase(),
-    coordinates: {
-      lat: coords.lat + jitter(),
-      lng: coords.lng + jitter(),
-    },
-    sentiment: 'neutral', // Default, sarà aggiornato dall'AI
+function extractImageUrl(item: Parser.Item & Record<string, unknown>): string | null {
+  // Prova media:content
+  const mediaContent = item['media:content'] as { $?: { url?: string } } | undefined
+  if (mediaContent?.$?.url) {
+    return mediaContent.$.url
   }
+  
+  // Prova media:thumbnail
+  const mediaThumbnail = item['media:thumbnail'] as { $?: { url?: string } } | undefined
+  if (mediaThumbnail?.$?.url) {
+    return mediaThumbnail.$.url
+  }
+  
+  // Prova enclosure
+  const enclosure = item.enclosure as { url?: string } | undefined
+  if (enclosure?.url) {
+    return enclosure.url
+  }
+  
+  return null
+}
+
+interface FeedConfig {
+  url: string
+  source: string
+  country: string
+  countryCode: string
+  lat: number
+  lng: number
 }
 
 /**
- * Fetch top headlines per un singolo paese
+ * Fetch RSS feed singolo
  */
-async function fetchHeadlinesByCountry(country: NewsApiCountry): Promise<NewsArticle[]> {
-  if (!API_KEY) {
-    console.warn('NewsAPI key not configured')
-    return []
-  }
-
+async function fetchRSSFeed(feedConfig: FeedConfig): Promise<NewsArticle[]> {
   try {
-    const response = await fetch(
-      `${NEWS_API_BASE}/top-headlines?country=${country}&pageSize=10&apiKey=${API_KEY}`
-    )
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`)
+    // Usa un proxy CORS per evitare problemi di cross-origin
+    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(feedConfig.url)}`
+    const feed = await parser.parseURL(proxyUrl)
+    
+    const articles: NewsArticle[] = []
+    
+    for (const item of feed.items.slice(0, 10)) {
+      // Aggiungi jitter alle coordinate per non sovrapporre i punti
+      const jitter = () => (Math.random() - 0.5) * 5
+      
+      const article: NewsArticle = {
+        id: generateArticleId(item.title || '', item.pubDate || '', feedConfig.source),
+        title: item.title || 'No title',
+        description: item.contentSnippet || item.content || null,
+        content: item.content || item.contentSnippet || null,
+        source: { id: feedConfig.source.toLowerCase().replace(/\s/g, '-'), name: feedConfig.source },
+        author: item.creator || null,
+        publishedAt: item.pubDate || new Date().toISOString(),
+        url: item.link || '',
+        urlToImage: extractImageUrl(item as Parser.Item & Record<string, unknown>),
+        country: feedConfig.country,
+        countryCode: feedConfig.countryCode,
+        coordinates: {
+          lat: feedConfig.lat + jitter(),
+          lng: feedConfig.lng + jitter(),
+        },
+        sentiment: 'neutral',
+      }
+      
+      articles.push(article)
     }
-
-    const data: NewsApiResponse = await response.json()
-
-    if (data.status !== 'ok') {
-      throw new Error(data.message || 'API Error')
-    }
-
-    return data.articles
-      .map((article) => transformArticle(article, country))
-      .filter((a): a is NewsArticle => a !== null)
+    
+    return articles
   } catch (error) {
-    console.error(`Failed to fetch news for ${country}:`, error)
+    console.error(`Failed to fetch RSS feed from ${feedConfig.source}:`, error)
     return []
   }
 }
 
 /**
- * Helper per delay (rate limiting)
+ * Fetch news da tutti i feed RSS
  */
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
-}
-
-/**
- * Fetch news da più paesi in modo sequenziale con rate limiting
- * NewsAPI ha un limite di richieste, quindi facciamo le chiamate una alla volta
- */
-export async function fetchGlobalNews(
-  countries: NewsApiCountry[] = ['us', 'gb', 'de', 'fr', 'it']
-): Promise<NewsArticle[]> {
-  const cacheKey = countries.sort().join(',')
+export async function fetchGlobalNews(): Promise<NewsArticle[]> {
+  const cacheKey = 'rss-feeds'
   const cached = newsCache.get(cacheKey)
   
   if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
     return cached.data
   }
 
-  const articles: NewsArticle[] = []
+  // Fetch tutti i feed in parallelo (nessun rate limit per RSS)
+  const results = await Promise.all(
+    RSS_FEEDS.map((feed) => fetchRSSFeed(feed))
+  )
+
+  const articles = results.flat()
   
-  // Fetch sequenziale con delay per evitare rate limiting (429)
-  for (let i = 0; i < countries.length; i++) {
-    const country = countries[i]
-    const result = await fetchHeadlinesByCountry(country)
-    articles.push(...result)
-    
-    // Aspetta 500ms tra una richiesta e l'altra (eccetto l'ultima)
-    if (i < countries.length - 1) {
-      await delay(500)
-    }
-  }
+  // Shuffle per mescolare le fonti
+  const shuffled = articles.sort(() => Math.random() - 0.5)
   
-  newsCache.set(cacheKey, { data: articles, timestamp: Date.now() })
+  newsCache.set(cacheKey, { data: shuffled, timestamp: Date.now() })
   
-  return articles
+  return shuffled
 }
 
 /**
- * Cerca news globalmente
+ * Cerca news (filtra dalle news già caricate)
  */
-export async function searchNews(query: string, pageSize = 20): Promise<NewsArticle[]> {
-  if (!API_KEY || !query.trim()) return []
-
-  try {
-    const response = await fetch(
-      `${NEWS_API_BASE}/everything?q=${encodeURIComponent(query)}&pageSize=${pageSize}&sortBy=publishedAt&apiKey=${API_KEY}`
-    )
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`)
-    }
-
-    const data: NewsApiResponse = await response.json()
-
-    if (data.status !== 'ok') {
-      throw new Error(data.message || 'API Error')
-    }
-
-    // Per search globale, assegna coordinate casuali dai paesi principali
-    return data.articles.map((article, index) => {
-      const country = newsApiCountries[index % newsApiCountries.length]
-      return transformArticle(article, country)
-    }).filter((a): a is NewsArticle => a !== null)
-  } catch (error) {
-    console.error('Failed to search news:', error)
-    return []
-  }
+export async function searchNews(query: string): Promise<NewsArticle[]> {
+  if (!query.trim()) return []
+  
+  const allNews = await fetchGlobalNews()
+  const lowerQuery = query.toLowerCase()
+  
+  return allNews.filter((article) => 
+    article.title.toLowerCase().includes(lowerQuery) ||
+    article.description?.toLowerCase().includes(lowerQuery)
+  )
 }
 
 /**
@@ -210,13 +233,13 @@ export function formatPublishedDate(dateString: string): string {
 }
 
 /**
- * Verifica se l'API key è configurata
+ * RSS feeds sono sempre disponibili
  */
 export function isNewsApiConfigured(): boolean {
-  return !!API_KEY
+  return true
 }
 
 /**
- * Lista paesi disponibili
+ * Lista paesi disponibili (basata sui feed RSS)
  */
-export { newsApiCountries }
+export const newsApiCountries = ['us', 'gb'] as const
