@@ -1,12 +1,10 @@
 import useSWR from 'swr'
 import { fetchGlobalNews, searchNews, articlesToPoints, isNewsApiConfigured } from '../lib/news'
-import { analyzeSentiment, type SentimentResult } from '../lib/sentiment'
+import { analyzeSentiment } from '../lib/sentiment'
 import type { NewsArticle, NewsPoint, NewsFilters } from '../types/news'
-import type { NewsApiCountry } from '../data/country-coordinates'
 import { useMemo, useState, useCallback, useEffect, useRef } from 'react'
 
 interface UseNewsOptions {
-  countries?: NewsApiCountry[]
   refreshInterval?: number
   enabled?: boolean
   autoCategorize?: boolean
@@ -25,15 +23,12 @@ interface UseNewsReturn {
   updateArticleSentiment: (articleId: string, sentiment: 'positive' | 'negative' | 'neutral', score?: number) => void
 }
 
-const DEFAULT_COUNTRIES: NewsApiCountry[] = ['us', 'gb', 'de', 'fr', 'it', 'jp', 'cn', 'au', 'br', 'in']
-
 /**
- * Hook principale per gestire le news
- * Now auto-categorizes all news on fetch
+ * Hook principale per gestire le news via RSS feeds
+ * Auto-categorizes all news on fetch
  */
 export function useNews(options: UseNewsOptions = {}): UseNewsReturn {
   const {
-    countries = DEFAULT_COUNTRIES,
     refreshInterval = 5 * 60 * 1000, // 5 minuti
     enabled = true,
     autoCategorize = true,
@@ -50,8 +45,8 @@ export function useNews(options: UseNewsOptions = {}): UseNewsReturn {
     isLoading,
     mutate,
   } = useSWR(
-    enabled && isNewsApiConfigured() ? ['global-news', countries.join(',')] : null,
-    () => fetchGlobalNews(countries),
+    enabled && isNewsApiConfigured() ? 'rss-global-news' : null,
+    () => fetchGlobalNews(),
     {
       refreshInterval,
       revalidateOnFocus: false,
