@@ -1,4 +1,5 @@
-import { Dialog, DialogContent } from './ui/dialog'
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from './ui/dialog'
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs'
 import { Badge } from './ui/badge'
 import { Button } from './ui/button'
@@ -41,7 +42,12 @@ export function NewsDetailModal({ article, isOpen, onClose, onBack }: NewsDetail
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-4xl max-h-[90vh] p-0 overflow-hidden bg-[var(--card)] border-[var(--border)]">
+      <DialogContent className="sm:max-w-4xl max-h-[90vh] p-0 overflow-hidden bg-[var(--card)] border-[var(--border)]" aria-describedby={undefined}>
+        {/* Accessible title - visually hidden */}
+        <VisuallyHidden>
+          <DialogTitle>{article.title}</DialogTitle>
+        </VisuallyHidden>
+        
         {/* Header with image */}
         <div className="relative">
           {article.urlToImage ? (

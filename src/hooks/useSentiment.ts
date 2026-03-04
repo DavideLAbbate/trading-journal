@@ -18,9 +18,12 @@ export function useSentiment(): UseSentimentReturn {
   const [results, setResults] = useState<Map<string, SentimentResult>>(new Map())
 
   const analyze = useCallback(async (article: NewsArticle): Promise<SentimentResult | null> => {
+    console.log('[v0] useSentiment.analyze called for:', article.id, article.title)
+    
     // Check se già analizzato
     const existing = results.get(article.id)
     if (existing) {
+      console.log('[v0] Using cached result for:', article.id)
       return existing
     }
 
@@ -28,7 +31,9 @@ export function useSentiment(): UseSentimentReturn {
     setError(null)
 
     try {
+      console.log('[v0] Calling analyzeSentiment...')
       const result = await analyzeSentiment(article)
+      console.log('[v0] analyzeSentiment result:', result)
       
       if (result) {
         setResults(prev => {
@@ -40,6 +45,7 @@ export function useSentiment(): UseSentimentReturn {
 
       return result
     } catch (err) {
+      console.error('[v0] useSentiment error:', err)
       const message = err instanceof Error ? err.message : 'Analysis failed'
       setError(message)
       return null

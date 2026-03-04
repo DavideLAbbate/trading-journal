@@ -91,15 +91,19 @@ function parseResponse(response: string): SentimentResult | null {
  * Analizza il sentiment di un articolo usando Ollama
  */
 export async function analyzeSentiment(article: NewsArticle): Promise<SentimentResult | null> {
+  console.log('[v0] analyzeSentiment called for:', article.title)
+  
   // Check cache
   const cacheKey = getCacheKey(article)
   const cached = sentimentCache.get(cacheKey)
   if (cached) {
+    console.log('[v0] Returning cached sentiment result')
     return cached
   }
 
   try {
     const prompt = buildPrompt(article)
+    console.log('[v0] Sending request to Ollama...')
     
     const response = await chatCompletion({
       messages: [
@@ -116,7 +120,9 @@ export async function analyzeSentiment(article: NewsArticle): Promise<SentimentR
       max_tokens: 500,
     })
 
+    console.log('[v0] Ollama response received:', response.message?.content?.slice(0, 100))
     const result = parseResponse(response.message.content)
+    console.log('[v0] Parsed result:', result)
     
     if (result) {
       // Salva in cache
@@ -125,7 +131,7 @@ export async function analyzeSentiment(article: NewsArticle): Promise<SentimentR
 
     return result
   } catch (error) {
-    console.error('Sentiment analysis failed:', error)
+    console.error('[v0] Sentiment analysis failed:', error)
     return null
   }
 }
