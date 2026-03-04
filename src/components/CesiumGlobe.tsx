@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Cartesian3,
   createOsmBuildingsAsync,
@@ -7,11 +7,7 @@ import {
   Terrain,
   Viewer
 } from 'cesium'
-import 'cesium/Build/Cesium/Widgets/widgets.css'
-
-// Set your Cesium Ion access token
-// Get a free token at: https://cesium.com/ion/tokens
-Ion.defaultAccessToken = import.meta.env.VITE_CESIUM_TOKEN || ''
+import 'cesium/Widgets/widgets.css'
 
 interface CesiumGlobeProps {
   className?: string
@@ -20,14 +16,28 @@ interface CesiumGlobeProps {
 export function CesiumGlobe({ className }: CesiumGlobeProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const viewerRef = useRef<Viewer | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    // Prevent double initialization in StrictMode
     if (!containerRef.current || viewerRef.current) return
+
+    // Set Cesium Ion access token
+    const token = import.meta.env.VITE_CESIUM_TOKEN
+    if (!token) {
+      setError('VITE_CESIUM_TOKEN non configurato. Aggiungi il token nel file .env')
+      return
+    }
+    Ion.defaultAccessToken = token
+
+    let viewer: Viewer | null = null
 
     const initCesium = async () => {
       try {
+        console.log('[v0] Initializing Cesium viewer...')
+        
         // Initialize the Cesium Viewer
-        const viewer = new Viewer(containerRef.current!, {
+        viewer = new Viewer(containerRef.current!, {
           terrain: Terrain.fromWorldTerrain(),
           animation: false,
           timeline: false,
@@ -40,6 +50,7 @@ export function CesiumGlobe({ className }: CesiumGlobeProps) {
         })
 
         viewerRef.current = viewer
+        console.log('[v0] Cesium viewer initialized successfully')
 
         // Fly the camera to San Francisco
         viewer.camera.flyTo({
@@ -53,8 +64,10 @@ export function CesiumGlobe({ className }: CesiumGlobeProps) {
         // Add Cesium OSM Buildings
         const buildingTileset = await createOsmBuildingsAsync()
         viewer.scene.primitives.add(buildingTileset)
-      } catch (error) {
-        console.error('Failed to initialize Cesium:', error)
+        console.log('[v0] OSM Buildings added')
+      } catch (err) {
+        console.error('[v0] Failed to initialize Cesium:', err)
+        setError(err instanceof Error ? err.message : 'Errore sconosciuto')
       }
     }
 
@@ -62,12 +75,24 @@ export function CesiumGlobe({ className }: CesiumGlobeProps) {
 
     // Cleanup on unmount
     return () => {
-      if (viewerRef.current) {
+      if (viewerRef.current && !viewerRef.current.isDestroyed()) {
+        console.log('[v0] Destroying Cesium viewer')
         viewerRef.current.destroy()
         viewerRef.current = null
       }
     }
   }, [])
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center w-full h-full bg-[var(--card)] text-[var(--destructive)]">
+        <div className="text-center p-4">
+          <p className="font-semibold mb-2">Errore Cesium</p>
+          <p className="text-sm text-[var(--muted-foreground)]">{error}</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div
