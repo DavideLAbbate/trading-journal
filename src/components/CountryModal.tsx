@@ -3,10 +3,11 @@ import type { CountryInfo } from '../data/countries'
 
 interface CountryModalProps {
   country: CountryInfo | null
+  isOpen: boolean
   onClose: () => void
 }
 
-export function CountryModal({ country, onClose }: CountryModalProps) {
+export function CountryModal({ country, isOpen, onClose }: CountryModalProps) {
   const modalRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -31,7 +32,7 @@ export function CountryModal({ country, onClose }: CountryModalProps) {
     }
   }, [country, onClose])
 
-  if (!country) return null
+  if (!isOpen || !country) return null
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in">
