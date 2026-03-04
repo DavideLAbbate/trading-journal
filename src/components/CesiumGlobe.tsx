@@ -14,8 +14,8 @@ import {
 import { countriesData, type CountryInfo } from '../data/countries'
 import { CountryModal } from './CountryModal'
 
-// GeoJSON URL for country boundaries
-const COUNTRIES_GEOJSON_URL = 'https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson'
+// Lightweight GeoJSON for country boundaries (~500KB vs 200MB)
+const COUNTRIES_GEOJSON_URL = 'https://raw.githubusercontent.com/johan/world.geo.json/master/countries.geo.json'
 
 interface CesiumGlobeProps {
   className?: string
@@ -132,7 +132,8 @@ export function CesiumGlobe({ className }: CesiumGlobeProps) {
           
           if (defined(pickedObject) && pickedObject.id) {
             const entity = pickedObject.id as Entity
-            const countryName = entity.properties?.ADMIN?.getValue() as string
+            // Try different property names (different GeoJSON sources use different keys)
+            const countryName = (entity.properties?.name?.getValue() || entity.properties?.ADMIN?.getValue()) as string
             
             if (countryName) {
               const countryInfo = countriesData[countryName]
@@ -166,7 +167,8 @@ export function CesiumGlobe({ className }: CesiumGlobeProps) {
           
           if (defined(pickedObject) && pickedObject.id) {
             const entity = pickedObject.id as Entity
-            const countryName = entity.properties?.ADMIN?.getValue() as string
+            // Try different property names (different GeoJSON sources use different keys)
+            const countryName = (entity.properties?.name?.getValue() || entity.properties?.ADMIN?.getValue()) as string
             
             if (countryName && entity.polygon) {
               hoveredEntityRef.current = entity
