@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import GlobeGL from 'react-globe.gl'
 import { CountryModal } from './CountryModal'
-import { getCountryInfo, type CountryInfo } from '../data/countries'
+import { countriesData, type CountryInfo } from '../data/countries'
 
 // Lightweight GeoJSON for country boundaries
 const COUNTRIES_GEOJSON_URL = 'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_admin_0_countries.geojson'
@@ -74,36 +74,41 @@ export function Globe({ className }: GlobeProps) {
     }
   }, [countries])
 
-  const handlePolygonClick = useCallback((polygon: CountryFeature | null) => {
-    if (polygon?.properties?.NAME) {
-      const countryName = polygon.properties.NAME
-      const info = getCountryInfo(countryName)
+  const handlePolygonClick = useCallback((polygon: object, event: MouseEvent, coords: { lat: number; lng: number; altitude: number }) => {
+    const feature = polygon as CountryFeature | null
+    if (feature?.properties?.NAME) {
+      const countryName = feature.properties.NAME
+      const info = countriesData[countryName]
       if (info) {
         setSelectedCountry(info)
       }
     }
   }, [])
 
-  const handlePolygonHover = useCallback((polygon: CountryFeature | null) => {
-    setHoveredCountry(polygon?.properties?.NAME || null)
+  const handlePolygonHover = useCallback((polygon: object | null, prevPolygon: object | null) => {
+    const feature = polygon as CountryFeature | null
+    setHoveredCountry(feature?.properties?.NAME || null)
   }, [])
 
-  const getPolygonColor = useCallback((polygon: CountryFeature) => {
-    const isHovered = polygon.properties?.NAME === hoveredCountry
+  const getPolygonColor = useCallback((polygon: object) => {
+    const feature = polygon as CountryFeature
+    const isHovered = feature.properties?.NAME === hoveredCountry
     return isHovered 
       ? 'rgba(59, 130, 246, 0.6)' 
       : 'rgba(59, 130, 246, 0.2)'
   }, [hoveredCountry])
 
-  const getPolygonStrokeColor = useCallback((polygon: CountryFeature) => {
-    const isHovered = polygon.properties?.NAME === hoveredCountry
+  const getPolygonStrokeColor = useCallback((polygon: object) => {
+    const feature = polygon as CountryFeature
+    const isHovered = feature.properties?.NAME === hoveredCountry
     return isHovered 
       ? 'rgba(34, 197, 94, 1)' 
       : 'rgba(59, 130, 246, 0.5)'
   }, [hoveredCountry])
 
-  const getPolygonAltitude = useCallback((polygon: CountryFeature) => {
-    const isHovered = polygon.properties?.NAME === hoveredCountry
+  const getPolygonAltitude = useCallback((polygon: object) => {
+    const feature = polygon as CountryFeature
+    const isHovered = feature.properties?.NAME === hoveredCountry
     return isHovered ? 0.02 : 0.01
   }, [hoveredCountry])
 
