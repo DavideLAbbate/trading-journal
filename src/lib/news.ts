@@ -87,10 +87,18 @@ async function fetchHeadlinesByCountry(country: NewsApiCountry): Promise<NewsArt
 }
 
 /**
- * Fetch news da più paesi in parallelo
+ * Helper per delay (rate limiting)
+ */
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+/**
+ * Fetch news da più paesi in modo sequenziale con rate limiting
+ * NewsAPI ha un limite di richieste, quindi facciamo le chiamate una alla volta
  */
 export async function fetchGlobalNews(
-  countries: NewsApiCountry[] = ['us', 'gb', 'de', 'fr', 'it', 'jp', 'cn', 'au', 'br', 'in']
+  countries: NewsApiCountry[] = ['us', 'gb', 'de', 'fr', 'it']
 ): Promise<NewsArticle[]> {
   const cacheKey = countries.sort().join(',')
   const cached = newsCache.get(cacheKey)
@@ -99,11 +107,19 @@ export async function fetchGlobalNews(
     return cached.data
   }
 
-  const results = await Promise.all(
-    countries.map((country) => fetchHeadlinesByCountry(country))
-  )
-
-  const articles = results.flat()
+  const articles: NewsArticle[] = []
+  
+  // Fetch sequenziale con delay per evitare rate limiting (429)
+  for (let i = 0; i < countries.length; i++) {
+    const country = countries[i]
+    const result = await fetchHeadlinesByCountry(country)
+    articles.push(...result)
+    
+    // Aspetta 500ms tra una richiesta e l'altra (eccetto l'ultima)
+    if (i < countries.length - 1) {
+      await delay(500)
+    }
+  }
   
   newsCache.set(cacheKey, { data: articles, timestamp: Date.now() })
   
