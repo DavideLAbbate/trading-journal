@@ -43,8 +43,13 @@ export function NewsModal({ article, isOpen, onClose, onAnalyze, isAnalyzing }: 
   }[article.sentiment || 'neutral']
 
   const handleAnalyze = async () => {
+    console.log('[v0] NewsModal handleAnalyze clicked, article:', article?.id, 'onAnalyze exists:', !!onAnalyze)
     if (article && onAnalyze) {
+      console.log('[v0] Calling onAnalyze...')
       await onAnalyze(article)
+      console.log('[v0] onAnalyze completed')
+    } else {
+      console.log('[v0] Cannot analyze: article=', !!article, 'onAnalyze=', !!onAnalyze)
     }
   }
 
