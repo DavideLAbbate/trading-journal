@@ -52,10 +52,10 @@ export function NewsModal({ article, isOpen, onClose, onAnalyze, isAnalyzing }: 
   return (
     <>
       <Dialog open={isOpen && !showDetail} onOpenChange={(open) => !open && onClose()}>
-        <DialogContent className="sm:max-w-xl p-0 overflow-hidden bg-[var(--card)] border-[var(--border)]">
+        <DialogContent className="sm:max-w-lg overflow-hidden bg-[var(--card)] border-[var(--border)] p-0">
           {/* Image Header */}
           {article.urlToImage && (
-            <div className="relative h-48 overflow-hidden">
+            <div className="relative h-44 overflow-hidden">
               <img
                 src={article.urlToImage}
                 alt={article.title}
@@ -67,7 +67,7 @@ export function NewsModal({ article, isOpen, onClose, onAnalyze, isAnalyzing }: 
               <div className="absolute inset-0 bg-gradient-to-t from-[var(--card)] via-transparent to-transparent" />
               
               {/* Badges overlay */}
-              <div className="absolute bottom-3 left-4 flex items-center gap-2">
+              <div className="absolute bottom-4 left-5 flex items-center gap-2">
                 <Badge variant={sentimentVariant} className="backdrop-blur-sm">
                   {sentimentLabel}
                 </Badge>
@@ -81,7 +81,7 @@ export function NewsModal({ article, isOpen, onClose, onAnalyze, isAnalyzing }: 
           )}
 
           {/* Content */}
-          <div className="p-6 space-y-4">
+          <div className="px-5 pb-5 pt-4 space-y-4">
             <DialogHeader>
               <DialogTitle className="text-xl leading-tight text-balance">
                 {article.title}
@@ -129,12 +129,12 @@ export function NewsModal({ article, isOpen, onClose, onAnalyze, isAnalyzing }: 
 
             {/* AI Summary if available */}
             {article.aiSummary && (
-              <div className="p-4 rounded-xl bg-[var(--muted)]/50 border border-[var(--border)]">
-                <div className="flex items-center gap-2 mb-2">
-                  <Sparkles className="w-4 h-4 text-[var(--accent)]" />
+              <div className="p-3 rounded-lg bg-[var(--muted)]/40 border border-[var(--border)]">
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-[var(--accent)]" />
                   <span className="text-xs font-medium text-[var(--accent)]">AI Summary</span>
                 </div>
-                <p className="text-sm text-[var(--foreground)]">{article.aiSummary}</p>
+                <p className="text-sm text-[var(--foreground)] leading-relaxed">{article.aiSummary}</p>
               </div>
             )}
 

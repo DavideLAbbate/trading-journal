@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import GlobeGL from 'react-globe.gl'
 import { NewsModal } from './NewsModal'
 import { sentimentColors } from '../lib/news'
@@ -12,6 +12,63 @@ interface GlobeProps {
   isAnalyzing?: boolean
 }
 
+// Cluster points that are too close together
+interface ClusteredPoint extends NewsPoint {
+  count: number
+  articles: NewsArticle[]
+}
+
+function clusterPoints(points: NewsPoint[], threshold = 3): ClusteredPoint[] {
+  const clusters: ClusteredPoint[] = []
+  const used = new Set<string>()
+
+  for (const point of points) {
+    if (used.has(point.id)) continue
+
+    const nearby = points.filter(p => {
+      if (used.has(p.id) || p.id === point.id) return false
+      const dist = Math.sqrt(
+        Math.pow(p.lat - point.lat, 2) + Math.pow(p.lng - point.lng, 2)
+      )
+      return dist < threshold
+    })
+
+    if (nearby.length > 0) {
+      const allPoints = [point, ...nearby]
+      allPoints.forEach(p => used.add(p.id))
+      
+      // Calculate center of cluster
+      const avgLat = allPoints.reduce((sum, p) => sum + p.lat, 0) / allPoints.length
+      const avgLng = allPoints.reduce((sum, p) => sum + p.lng, 0) / allPoints.length
+      
+      // Determine dominant sentiment
+      const sentimentCounts = { positive: 0, negative: 0, neutral: 0 }
+      allPoints.forEach(p => sentimentCounts[p.sentiment]++)
+      const dominantSentiment = Object.entries(sentimentCounts)
+        .sort((a, b) => b[1] - a[1])[0][0] as 'positive' | 'negative' | 'neutral'
+
+      clusters.push({
+        ...point,
+        id: `cluster_${point.id}`,
+        lat: avgLat,
+        lng: avgLng,
+        sentiment: dominantSentiment,
+        count: allPoints.length,
+        articles: allPoints.map(p => p.article)
+      })
+    } else {
+      used.add(point.id)
+      clusters.push({
+        ...point,
+        count: 1,
+        articles: [point.article]
+      })
+    }
+  }
+
+  return clusters
+}
+
 export function Globe({ 
   className, 
   newsPoints, 
@@ -21,9 +78,12 @@ export function Globe({
 }: GlobeProps) {
   const globeRef = useRef<any>(null)
   const containerRef = useRef<HTMLDivElement>(null)
-  const [hoveredPoint, setHoveredPoint] = useState<NewsPoint | null>(null)
+  const [hoveredPoint, setHoveredPoint] = useState<ClusteredPoint | null>(null)
   const [selectedArticle, setSelectedArticle] = useState<NewsArticle | null>(null)
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
+
+  // Cluster nearby points for better visibility
+  const clusteredPoints = useMemo(() => clusterPoints(newsPoints), [newsPoints])
 
   // Handle resize
   useEffect(() => {
@@ -68,14 +128,15 @@ export function Globe({
   }, [hoveredPoint, selectedArticle])
 
   const handlePointClick = useCallback((point: object) => {
-    const newsPoint = point as NewsPoint
-    if (newsPoint?.article) {
-      setSelectedArticle(newsPoint.article)
+    const clusteredPoint = point as ClusteredPoint
+    if (clusteredPoint?.articles?.length > 0) {
+      // For clusters, show the first article (could implement a picker later)
+      setSelectedArticle(clusteredPoint.articles[0])
       
       // Focus camera on the point
       if (globeRef.current) {
         globeRef.current.pointOfView(
-          { lat: newsPoint.lat, lng: newsPoint.lng, altitude: 1.5 },
+          { lat: clusteredPoint.lat, lng: clusteredPoint.lng, altitude: 1.5 },
           1000
         )
       }
@@ -83,24 +144,28 @@ export function Globe({
   }, [])
 
   const handlePointHover = useCallback((point: object | null) => {
-    setHoveredPoint(point as NewsPoint | null)
+    setHoveredPoint(point as ClusteredPoint | null)
   }, [])
 
   const getPointColor = useCallback((point: object) => {
-    const newsPoint = point as NewsPoint
-    return sentimentColors[newsPoint.sentiment] || sentimentColors.neutral
+    const clusteredPoint = point as ClusteredPoint
+    return sentimentColors[clusteredPoint.sentiment] || sentimentColors.neutral
   }, [])
 
   const getPointAltitude = useCallback((point: object) => {
-    const newsPoint = point as NewsPoint
-    const isHovered = hoveredPoint?.id === newsPoint.id
-    return isHovered ? 0.08 : 0.02
+    const clusteredPoint = point as ClusteredPoint
+    const isHovered = hoveredPoint?.id === clusteredPoint.id
+    // Bigger altitude for clusters
+    const baseAltitude = clusteredPoint.count > 1 ? 0.04 : 0.02
+    return isHovered ? 0.1 : baseAltitude
   }, [hoveredPoint])
 
   const getPointRadius = useCallback((point: object) => {
-    const newsPoint = point as NewsPoint
-    const isHovered = hoveredPoint?.id === newsPoint.id
-    return isHovered ? 0.8 : 0.5
+    const clusteredPoint = point as ClusteredPoint
+    const isHovered = hoveredPoint?.id === clusteredPoint.id
+    // Bigger radius for clusters based on count
+    const baseRadius = 0.4 + Math.min(clusteredPoint.count * 0.15, 0.6)
+    return isHovered ? baseRadius * 1.4 : baseRadius
   }, [hoveredPoint])
 
   return (
@@ -117,31 +182,35 @@ export function Globe({
 
       {/* Hover tooltip */}
       {hoveredPoint && (
-        <div className="absolute top-4 left-4 z-10 max-w-xs p-4 rounded-xl bg-[var(--card)]/95 backdrop-blur-sm border border-[var(--border)] shadow-2xl animate-fade-in">
-          <div className="flex items-start gap-3">
+        <div className="absolute top-4 left-4 z-10 max-w-xs p-3 rounded-lg bg-[var(--card)]/95 backdrop-blur-sm border border-[var(--border)] shadow-2xl animate-fade-in">
+          <div className="flex items-start gap-2.5">
             <div 
-              className="w-3 h-3 rounded-full flex-shrink-0 mt-1.5 animate-pulse-glow"
-              style={{ 
-                backgroundColor: sentimentColors[hoveredPoint.sentiment],
-                color: sentimentColors[hoveredPoint.sentiment]
-              }} 
+              className="w-2.5 h-2.5 rounded-full flex-shrink-0 mt-1.5"
+              style={{ backgroundColor: sentimentColors[hoveredPoint.sentiment] }} 
             />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-[var(--foreground)] line-clamp-2">
-                {hoveredPoint.title}
-              </p>
-              <div className="flex items-center gap-2 mt-1.5">
-                <span className="text-xs text-[var(--muted-foreground)]">
-                  {hoveredPoint.source}
-                </span>
-                <span className="text-xs text-[var(--muted-foreground)]">•</span>
-                <span className="text-xs text-[var(--muted-foreground)]">
-                  {hoveredPoint.country}
-                </span>
-              </div>
+              {hoveredPoint.count > 1 ? (
+                <>
+                  <p className="text-sm font-medium text-[var(--foreground)]">
+                    {hoveredPoint.count} notizie
+                  </p>
+                  <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
+                    {hoveredPoint.country}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm font-medium text-[var(--foreground)] line-clamp-2">
+                    {hoveredPoint.title}
+                  </p>
+                  <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
+                    {hoveredPoint.source} - {hoveredPoint.country}
+                  </p>
+                </>
+              )}
             </div>
           </div>
-          <p className="text-xs text-[var(--muted-foreground)] mt-2">
+          <p className="text-[10px] text-[var(--muted-foreground)] mt-2 opacity-60">
             Click per dettagli
           </p>
         </div>
@@ -149,22 +218,22 @@ export function Globe({
 
       {/* Stats overlay */}
       {newsPoints.length > 0 && (
-        <div className="absolute bottom-4 left-4 z-10 flex items-center gap-4 p-3 rounded-xl bg-[var(--card)]/80 backdrop-blur-sm border border-[var(--border)]">
-          <div className="flex items-center gap-2">
-            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: sentimentColors.positive }} />
-            <span className="text-xs text-[var(--muted-foreground)]">
+        <div className="absolute bottom-4 left-4 z-10 flex items-center gap-3 px-3 py-2 rounded-lg bg-[var(--card)]/80 backdrop-blur-sm border border-[var(--border)]">
+          <div className="flex items-center gap-1.5">
+            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: sentimentColors.positive }} />
+            <span className="text-[11px] font-medium text-[var(--muted-foreground)]">
               {newsPoints.filter(p => p.sentiment === 'positive').length}
             </span>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: sentimentColors.neutral }} />
-            <span className="text-xs text-[var(--muted-foreground)]">
+          <div className="flex items-center gap-1.5">
+            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: sentimentColors.neutral }} />
+            <span className="text-[11px] font-medium text-[var(--muted-foreground)]">
               {newsPoints.filter(p => p.sentiment === 'neutral').length}
             </span>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: sentimentColors.negative }} />
-            <span className="text-xs text-[var(--muted-foreground)]">
+          <div className="flex items-center gap-1.5">
+            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: sentimentColors.negative }} />
+            <span className="text-[11px] font-medium text-[var(--muted-foreground)]">
               {newsPoints.filter(p => p.sentiment === 'negative').length}
             </span>
           </div>
@@ -181,28 +250,31 @@ export function Globe({
           globeImageUrl="//unpkg.com/three-globe/example/img/earth-blue-marble.jpg"
           bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
           // News points
-          pointsData={newsPoints}
-          pointLat={(d: object) => (d as NewsPoint).lat}
-          pointLng={(d: object) => (d as NewsPoint).lng}
+          pointsData={clusteredPoints}
+          pointLat={(d: object) => (d as ClusteredPoint).lat}
+          pointLng={(d: object) => (d as ClusteredPoint).lng}
           pointColor={getPointColor}
           pointAltitude={getPointAltitude}
           pointRadius={getPointRadius}
           pointLabel={(d: object) => {
-            const point = d as NewsPoint
+            const point = d as ClusteredPoint
+            const title = point.count > 1 
+              ? `${point.count} notizie`
+              : point.title.slice(0, 60) + (point.title.length > 60 ? '...' : '')
             return `
               <div style="
                 background: rgba(12, 12, 15, 0.95);
-                padding: 8px 12px;
-                border-radius: 8px;
-                border: 1px solid rgba(255,255,255,0.1);
-                max-width: 250px;
+                padding: 6px 10px;
+                border-radius: 6px;
+                border: 1px solid rgba(255,255,255,0.08);
+                max-width: 200px;
                 font-family: system-ui, sans-serif;
               ">
-                <div style="font-size: 12px; font-weight: 600; color: #fafafa; line-height: 1.4;">
-                  ${point.title.slice(0, 80)}${point.title.length > 80 ? '...' : ''}
+                <div style="font-size: 11px; font-weight: 500; color: #fafafa; line-height: 1.3;">
+                  ${title}
                 </div>
-                <div style="font-size: 10px; color: #71717a; margin-top: 4px;">
-                  ${point.source} • ${point.country}
+                <div style="font-size: 9px; color: #71717a; margin-top: 3px;">
+                  ${point.country}
                 </div>
               </div>
             `

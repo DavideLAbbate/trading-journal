@@ -41,11 +41,11 @@ export function NewsDetailModal({ article, isOpen, onClose, onBack }: NewsDetail
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-4xl max-h-[90vh] p-0 overflow-hidden bg-[var(--card)] border-[var(--border)]">
+      <DialogContent className="sm:max-w-3xl max-h-[85vh] p-0 overflow-hidden bg-[var(--card)] border-[var(--border)]">
         {/* Header with image */}
         <div className="relative">
           {article.urlToImage ? (
-            <div className="h-56 overflow-hidden">
+            <div className="h-48 overflow-hidden">
               <img
                 src={article.urlToImage}
                 alt={article.title}
@@ -54,25 +54,25 @@ export function NewsDetailModal({ article, isOpen, onClose, onBack }: NewsDetail
                   (e.target as HTMLImageElement).style.display = 'none'
                 }}
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-[var(--card)] via-[var(--card)]/50 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[var(--card)] via-[var(--card)]/60 to-transparent" />
             </div>
           ) : (
-            <div className="h-32 bg-gradient-to-br from-[var(--primary)]/20 to-[var(--accent)]/20" />
+            <div className="h-24 bg-gradient-to-br from-[var(--primary)]/20 to-[var(--accent)]/20" />
           )}
 
           {/* Back button */}
           <Button
             variant="ghost"
-            size="icon"
+            size="sm"
             onClick={onBack}
-            className="absolute top-4 left-4 bg-[var(--card)]/80 backdrop-blur-sm hover:bg-[var(--card)]"
+            className="absolute top-3 left-3 h-8 w-8 p-0 bg-[var(--card)]/80 backdrop-blur-sm hover:bg-[var(--card)]"
           >
             <ArrowLeft className="w-4 h-4" />
           </Button>
 
           {/* Title overlay */}
-          <div className="absolute bottom-0 left-0 right-0 p-6">
-            <div className="flex items-center gap-2 mb-3">
+          <div className="absolute bottom-0 left-0 right-0 px-5 pb-4">
+            <div className="flex items-center gap-2 mb-2">
               <Badge variant={article.sentiment === 'positive' ? 'positive' : article.sentiment === 'negative' ? 'negative' : 'neutral'}>
                 <SentimentIcon className="w-3 h-3 mr-1" />
                 {article.sentiment === 'positive' ? 'Positivo' : article.sentiment === 'negative' ? 'Negativo' : 'Neutro'}
@@ -86,10 +86,10 @@ export function NewsDetailModal({ article, isOpen, onClose, onBack }: NewsDetail
                 {article.source.name}
               </Badge>
             </div>
-            <h2 className="text-2xl font-bold text-[var(--foreground)] leading-tight text-balance">
+            <h2 className="text-xl font-bold text-[var(--foreground)] leading-tight text-balance">
               {article.title}
             </h2>
-            <div className="flex items-center gap-4 mt-3 text-sm text-[var(--muted-foreground)]">
+            <div className="flex items-center gap-3 mt-2 text-sm text-[var(--muted-foreground)]">
               <div className="flex items-center gap-1.5">
                 <MapPin className="w-4 h-4" />
                 {article.country}
@@ -104,8 +104,8 @@ export function NewsDetailModal({ article, isOpen, onClose, onBack }: NewsDetail
 
         {/* Tabs Content */}
         <Tabs defaultValue="overview" className="flex-1">
-          <div className="px-6 pt-4">
-            <TabsList className="w-full justify-start">
+          <div className="px-5 pt-3 pb-1">
+            <TabsList className="w-full justify-start bg-[var(--muted)]/30">
               <TabsTrigger value="overview" className="gap-2">
                 <FileText className="w-4 h-4" />
                 Overview
@@ -121,9 +121,9 @@ export function NewsDetailModal({ article, isOpen, onClose, onBack }: NewsDetail
             </TabsList>
           </div>
 
-          <ScrollArea className="h-[400px]">
+          <ScrollArea className="h-[340px]">
             {/* Overview Tab */}
-            <TabsContent value="overview" className="p-6 pt-2 space-y-6">
+            <TabsContent value="overview" className="px-5 py-4 space-y-5">
               {article.description && (
                 <div>
                   <h3 className="text-sm font-semibold text-[var(--muted-foreground)] uppercase tracking-wide mb-2">
@@ -180,7 +180,7 @@ export function NewsDetailModal({ article, isOpen, onClose, onBack }: NewsDetail
             </TabsContent>
 
             {/* Sentiment Tab */}
-            <TabsContent value="sentiment" className="p-6 pt-2 space-y-6">
+            <TabsContent value="sentiment" className="px-5 py-4 space-y-5">
               <div className="flex justify-center">
                 <SentimentGauge 
                   score={article.sentimentScore || 0} 
@@ -237,7 +237,7 @@ export function NewsDetailModal({ article, isOpen, onClose, onBack }: NewsDetail
             </TabsContent>
 
             {/* AI Tab */}
-            <TabsContent value="ai" className="p-6 pt-2 space-y-6">
+            <TabsContent value="ai" className="px-5 py-4 space-y-5">
               {article.aiSummary ? (
                 <>
                   <Card className="border-[var(--accent)]/30 bg-[var(--accent)]/5">

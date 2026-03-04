@@ -44,29 +44,28 @@ export function Header({ onSearch, onRefresh, isLoading, newsCount = 0 }: Header
       {/* Glassmorphism background */}
       <div className="absolute inset-0 bg-[var(--glass-bg)] backdrop-blur-xl border-b border-[var(--glass-border)]" />
       
-      <div className="relative flex items-center justify-between px-6 py-3">
+      <div className="relative flex items-center justify-between h-16 px-4 md:px-6">
         {/* Left: Logo + Navigation */}
-        <div className="flex items-center gap-8">
+        <div className="flex items-center gap-6">
           {/* Logo */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
             <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-[var(--primary)] to-[var(--accent)] rounded-xl blur-sm opacity-60" />
-              <div className="relative w-10 h-10 bg-gradient-to-br from-[var(--primary)] to-[var(--accent)] rounded-xl flex items-center justify-center shadow-lg">
+              <div className="w-9 h-9 bg-[var(--primary)] rounded-lg flex items-center justify-center">
                 <Globe2 className="w-5 h-5 text-white" />
               </div>
             </div>
-            <div className="flex flex-col">
-              <h1 className="text-lg font-bold text-[var(--foreground)] tracking-tight">
+            <div className="hidden sm:flex flex-col">
+              <h1 className="text-base font-semibold text-[var(--foreground)] leading-tight">
                 NewsGlobe
               </h1>
-              <span className="text-[10px] uppercase tracking-widest text-[var(--muted-foreground)]">
-                World News Portal
+              <span className="text-[10px] text-[var(--muted-foreground)]">
+                World News
               </span>
             </div>
           </div>
 
           {/* Navigation Pills */}
-          <nav className="hidden md:flex items-center gap-1 p-1 rounded-xl bg-[var(--muted)]/50">
+          <nav className="hidden md:flex items-center gap-1 p-1 rounded-lg bg-[var(--muted)]/40">
             {tabs.map((tab) => {
               const Icon = tab.icon
               return (
@@ -74,14 +73,14 @@ export function Header({ onSearch, onRefresh, isLoading, newsCount = 0 }: Header
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
                   className={cn(
-                    'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200',
+                    'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200',
                     activeTab === tab.id
-                      ? 'bg-[var(--card)] text-[var(--foreground)] shadow-md'
-                      : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--muted)]'
+                      ? 'bg-[var(--card)] text-[var(--foreground)] shadow-sm'
+                      : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
                   )}
                 >
                   <Icon className="w-4 h-4" />
-                  {tab.label}
+                  <span className="hidden lg:inline">{tab.label}</span>
                 </button>
               )
             })}
@@ -89,35 +88,33 @@ export function Header({ onSearch, onRefresh, isLoading, newsCount = 0 }: Header
         </div>
 
         {/* Center: Search */}
-        <form onSubmit={handleSearch} className="flex-1 max-w-md mx-8 hidden lg:block">
+        <form onSubmit={handleSearch} className="hidden lg:block absolute left-1/2 -translate-x-1/2 w-full max-w-sm">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--muted-foreground)]" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search world news..."
-              className="w-full h-10 pl-10 pr-4 rounded-xl bg-[var(--muted)] border border-[var(--border)] text-sm text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:border-transparent transition-all"
+              placeholder="Search news..."
+              className="w-full h-9 pl-9 pr-4 rounded-lg bg-[var(--muted)]/60 border border-[var(--border)] text-sm text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/50 focus:border-[var(--primary)]/50 transition-all"
             />
           </div>
         </form>
 
         {/* Right: Status + Actions */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           {/* News Count */}
           {newsCount > 0 && (
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--muted)]/50">
-              <div className="w-2 h-2 rounded-full bg-[var(--accent)] animate-pulse" />
-              <span className="text-xs font-medium text-[var(--muted-foreground)]">
-                {newsCount} news live
-              </span>
+            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[var(--muted)]/40 text-[var(--muted-foreground)]">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="text-xs font-medium">{newsCount}</span>
             </div>
           )}
 
           {/* Ollama Status Indicator */}
           <div
             className={cn(
-              'flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors',
+              'flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors',
               ollamaStatus === 'connected'
                 ? 'bg-emerald-500/10 text-emerald-400'
                 : ollamaStatus === 'disconnected'
@@ -126,24 +123,24 @@ export function Header({ onSearch, onRefresh, isLoading, newsCount = 0 }: Header
             )}
           >
             {ollamaStatus === 'connected' ? (
-              <Wifi className="w-4 h-4" />
+              <Wifi className="w-3.5 h-3.5" />
             ) : ollamaStatus === 'disconnected' ? (
-              <WifiOff className="w-4 h-4" />
+              <WifiOff className="w-3.5 h-3.5" />
             ) : (
-              <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+              <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
             )}
-            <span className="text-xs font-medium hidden sm:inline">
-              {ollamaStatus === 'connected' ? 'AI Online' : ollamaStatus === 'disconnected' ? 'AI Offline' : 'Checking...'}
+            <span className="hidden sm:inline">
+              {ollamaStatus === 'connected' ? 'AI' : ollamaStatus === 'disconnected' ? 'Offline' : '...'}
             </span>
           </div>
 
           {/* Refresh Button */}
           <Button
             variant="ghost"
-            size="icon"
+            size="sm"
             onClick={onRefresh}
             disabled={isLoading}
-            className="text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+            className="h-8 w-8 p-0 text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
           >
             <RefreshCw className={cn('w-4 h-4', isLoading && 'animate-spin')} />
           </Button>
@@ -151,8 +148,8 @@ export function Header({ onSearch, onRefresh, isLoading, newsCount = 0 }: Header
           {/* Settings Button */}
           <Button
             variant="ghost"
-            size="icon"
-            className="text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+            size="sm"
+            className="h-8 w-8 p-0 text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
           >
             <Settings className="w-4 h-4" />
           </Button>
