@@ -40,12 +40,15 @@ export function CesiumGlobe({ className }: CesiumGlobeProps) {
   useEffect(() => {
     if (!containerRef.current || viewerRef.current) return
 
-    const token = import.meta.env.VITE_CESIUM_TOKEN
-    if (!token) {
+    // Clean the token (remove quotes if accidentally included)
+    const rawToken = import.meta.env.VITE_CESIUM_TOKEN
+    if (!rawToken) {
       setError('VITE_CESIUM_TOKEN non configurato')
       setLoading(false)
       return
     }
+    // Remove any surrounding quotes and whitespace
+    const token = rawToken.toString().replace(/^["']|["']$/g, '').trim()
     Ion.defaultAccessToken = token
 
     let viewer: Viewer | null = null
