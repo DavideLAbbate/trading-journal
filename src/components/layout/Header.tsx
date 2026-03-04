@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Globe2, Search, Wifi, WifiOff, RefreshCw, Settings, Newspaper } from 'lucide-react'
+import { Search, Wifi, WifiOff, RefreshCw, Settings, TrendingUp, Activity } from 'lucide-react'
 import { Button } from '../ui/button'
 import { checkLLMHealth } from '../../lib/llm'
 import { cn } from '../../lib/utils'
@@ -14,7 +14,6 @@ interface HeaderProps {
 export function Header({ onSearch, onRefresh, isLoading, newsCount = 0 }: HeaderProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [ollamaStatus, setOllamaStatus] = useState<'connected' | 'disconnected' | 'checking'>('checking')
-  const [activeTab, setActiveTab] = useState('globe')
 
   // Check Ollama connection on mount
   useEffect(() => {
@@ -34,58 +33,31 @@ export function Header({ onSearch, onRefresh, isLoading, newsCount = 0 }: Header
     onSearch?.(searchQuery)
   }
 
-  const tabs = [
-    { id: 'globe', label: 'Globe View', icon: Globe2 },
-    { id: 'feed', label: 'News Feed', icon: Newspaper },
-  ]
-
   return (
     <header className="relative">
       {/* Glassmorphism background */}
       <div className="absolute inset-0 bg-[var(--glass-bg)] backdrop-blur-xl border-b border-[var(--glass-border)]" />
       
       <div className="relative flex items-center justify-between px-6 py-3">
-        {/* Left: Logo + Navigation */}
+        {/* Left: Logo */}
         <div className="flex items-center gap-8">
           {/* Logo */}
           <div className="flex items-center gap-3">
             <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-[var(--primary)] to-[var(--accent)] rounded-xl blur-sm opacity-60" />
-              <div className="relative w-10 h-10 bg-gradient-to-br from-[var(--primary)] to-[var(--accent)] rounded-xl flex items-center justify-center shadow-lg">
-                <Globe2 className="w-5 h-5 text-white" />
+              <div className="absolute inset-0 bg-gradient-to-br from-[var(--tropical-teal)] to-[var(--neon-ice)] rounded-xl blur-sm opacity-60" />
+              <div className="relative w-10 h-10 bg-gradient-to-br from-[var(--tropical-teal)] to-[var(--neon-ice)] rounded-xl flex items-center justify-center shadow-lg">
+                <TrendingUp className="w-5 h-5 text-[var(--prussian-blue)]" />
               </div>
             </div>
             <div className="flex flex-col">
               <h1 className="text-lg font-bold text-[var(--foreground)] tracking-tight">
-                NewsGlobe
+                Trading Journal
               </h1>
-              <span className="text-[10px] uppercase tracking-widest text-[var(--muted-foreground)]">
-                World News Portal
+              <span className="text-[10px] uppercase tracking-widest text-[var(--tropical-teal)]">
+                Market Intelligence
               </span>
             </div>
           </div>
-
-          {/* Navigation Pills */}
-          <nav className="hidden md:flex items-center gap-1 p-1 rounded-xl bg-[var(--muted)]/50">
-            {tabs.map((tab) => {
-              const Icon = tab.icon
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={cn(
-                    'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200',
-                    activeTab === tab.id
-                      ? 'bg-[var(--card)] text-[var(--foreground)] shadow-md'
-                      : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--muted)]'
-                  )}
-                >
-                  <Icon className="w-4 h-4" />
-                  {tab.label}
-                </button>
-              )
-            })}
-          </nav>
         </div>
 
         {/* Center: Search */}
@@ -96,7 +68,7 @@ export function Header({ onSearch, onRefresh, isLoading, newsCount = 0 }: Header
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search world news..."
+              placeholder="Search market news..."
               className="w-full h-10 pl-10 pr-4 rounded-xl bg-[var(--muted)] border border-[var(--border)] text-sm text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:border-transparent transition-all"
             />
           </div>

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import GlobeGL from 'react-globe.gl'
 import { NewsModal } from './NewsModal'
+import { MarketImpactSidebar } from './MarketImpactSidebar'
 import { sentimentColors } from '../lib/news'
 import type { NewsPoint, NewsArticle } from '../types/news'
 
@@ -8,21 +9,23 @@ interface GlobeProps {
   className?: string
   newsPoints: NewsPoint[]
   isLoading?: boolean
-  onAnalyzeArticle?: (article: NewsArticle) => Promise<void>
-  isAnalyzing?: boolean
+  isCategorizing?: boolean
+  categorizationProgress?: { completed: number; total: number }
 }
 
 export function Globe({ 
   className, 
   newsPoints, 
   isLoading,
-  onAnalyzeArticle,
-  isAnalyzing 
+  isCategorizing,
+  categorizationProgress 
 }: GlobeProps) {
   const globeRef = useRef<any>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [hoveredPoint, setHoveredPoint] = useState<NewsPoint | null>(null)
   const [selectedArticle, setSelectedArticle] = useState<NewsArticle | null>(null)
+  const [showMarketSidebar, setShowMarketSidebar] = useState(false)
+  const [sidebarArticle, setSidebarArticle] = useState<NewsArticle | null>(null)
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
 
   // Handle resize
@@ -69,9 +72,7 @@ export function Globe({
 
   const handlePointClick = useCallback((point: object) => {
     const newsPoint = point as NewsPoint
-    console.log('[v0] Globe point clicked, onAnalyzeArticle exists:', !!onAnalyzeArticle)
     if (newsPoint?.article) {
-      console.log('[v0] Setting selectedArticle:', newsPoint.article.id)
       setSelectedArticle(newsPoint.article)
       
       // Focus camera on the point
@@ -83,6 +84,13 @@ export function Globe({
       }
     }
   }, [])
+
+  const handleShowMarketImpacts = useCallback(() => {
+    if (selectedArticle) {
+      setSidebarArticle(selectedArticle)
+      setShowMarketSidebar(true)
+    }
+  }, [selectedArticle])
 
   const handlePointHover = useCallback((point: object | null) => {
     setHoveredPoint(point as NewsPoint | null)
@@ -113,6 +121,27 @@ export function Globe({
           <div className="flex flex-col items-center gap-3">
             <div className="w-8 h-8 border-2 border-[var(--primary)] border-t-transparent rounded-full animate-spin" />
             <span className="text-sm text-[var(--muted-foreground)]">Loading news...</span>
+          </div>
+        </div>
+      )}
+
+      {/* Categorization progress */}
+      {isCategorizing && categorizationProgress && (
+        <div className="absolute top-4 right-4 z-10 p-4 rounded-xl bg-[var(--glass-bg)] backdrop-blur-sm border border-[var(--glass-border)]">
+          <div className="flex items-center gap-3">
+            <div className="w-5 h-5 border-2 border-[var(--tropical-teal)] border-t-transparent rounded-full animate-spin" />
+            <div>
+              <p className="text-xs font-medium text-[var(--foreground)]">Categorizing news...</p>
+              <p className="text-xs text-[var(--muted-foreground)]">
+                {categorizationProgress.completed}/{categorizationProgress.total}
+              </p>
+            </div>
+          </div>
+          <div className="mt-2 h-1 bg-[var(--muted)] rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-gradient-to-r from-[var(--tropical-teal)] to-[var(--neon-ice)] transition-all duration-300"
+              style={{ width: `${(categorizationProgress.completed / categorizationProgress.total) * 100}%` }}
+            />
           </div>
         </div>
       )}
@@ -222,10 +251,19 @@ export function Globe({
       {/* News Modal */}
       <NewsModal
         article={selectedArticle}
-        isOpen={!!selectedArticle}
+        isOpen={!!selectedArticle && !showMarketSidebar}
         onClose={() => setSelectedArticle(null)}
-        onAnalyze={onAnalyzeArticle}
-        isAnalyzing={isAnalyzing}
+        onShowMarketImpacts={handleShowMarketImpacts}
+      />
+
+      {/* Market Impact Sidebar */}
+      <MarketImpactSidebar
+        article={sidebarArticle}
+        isOpen={showMarketSidebar}
+        onClose={() => {
+          setShowMarketSidebar(false)
+          setSidebarArticle(null)
+        }}
       />
     </div>
   )
