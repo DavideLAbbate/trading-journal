@@ -69,7 +69,9 @@ export function Globe({
 
   const handlePointClick = useCallback((point: object) => {
     const newsPoint = point as NewsPoint
+    console.log('[v0] Globe point clicked, onAnalyzeArticle exists:', !!onAnalyzeArticle)
     if (newsPoint?.article) {
+      console.log('[v0] Setting selectedArticle:', newsPoint.article.id)
       setSelectedArticle(newsPoint.article)
       
       // Focus camera on the point
