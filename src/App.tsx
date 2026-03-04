@@ -1,10 +1,12 @@
 import { CesiumGlobe } from './components/CesiumGlobe'
+import { MainLayout } from './components/layout/MainLayout'
+import { Header } from './components/layout/Header'
 
 function App() {
   return (
-    <div className="w-screen h-screen">
+    <MainLayout header={<Header />}>
       <CesiumGlobe className="w-full h-full" />
-    </div>
+    </MainLayout>
   )
 }
 
