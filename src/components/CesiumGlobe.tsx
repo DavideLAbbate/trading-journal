@@ -48,10 +48,17 @@ export function CesiumGlobe({ className }: CesiumGlobeProps) {
     }
     Ion.defaultAccessToken = token
 
+    let viewer: Viewer | null = null
+    let handler: ScreenSpaceEventHandler | null = null
+
     const initCesium = async () => {
       try {
+        // Create a div to hide credits
+        const creditContainer = document.createElement('div')
+        creditContainer.style.display = 'none'
+
         // Simple globe viewer without terrain for better performance
-        const viewer = new Viewer(containerRef.current!, {
+        viewer = new Viewer(containerRef.current!, {
           animation: false,
           timeline: false,
           baseLayerPicker: false,
@@ -62,7 +69,9 @@ export function CesiumGlobe({ className }: CesiumGlobeProps) {
           fullscreenButton: false,
           infoBox: false,
           selectionIndicator: false,
-          creditContainer: document.createElement('div'), // Hide credits
+          creditContainer,
+          requestRenderMode: true,
+          maximumRenderTimeChange: Infinity,
         })
 
         viewerRef.current = viewer
@@ -73,8 +82,10 @@ export function CesiumGlobe({ className }: CesiumGlobeProps) {
         })
 
         // Limit zoom
-        viewer.scene.screenSpaceCameraController.minimumZoomDistance = 2000000
-        viewer.scene.screenSpaceCameraController.maximumZoomDistance = 30000000
+        if (viewer.scene && viewer.scene.screenSpaceCameraController) {
+          viewer.scene.screenSpaceCameraController.minimumZoomDistance = 2000000
+          viewer.scene.screenSpaceCameraController.maximumZoomDistance = 30000000
+        }
 
         // Load country boundaries
         const dataSource = await GeoJsonDataSource.load(COUNTRIES_GEOJSON_URL, {
@@ -83,7 +94,12 @@ export function CesiumGlobe({ className }: CesiumGlobeProps) {
           fill: Color.fromCssColorString('#3b82f6').withAlpha(0.1),
         })
         
-        await viewer.dataSources.add(dataSource)
+        // Check if viewer is still valid before adding data source
+        if (!viewer || viewer.isDestroyed()) {
+          return
+        }
+
+        viewer.dataSources.add(dataSource)
         dataSourceRef.current = dataSource
 
         // Style all entities
@@ -107,10 +123,11 @@ export function CesiumGlobe({ className }: CesiumGlobeProps) {
         }
 
         // Event handlers for click and hover
-        const handler = new ScreenSpaceEventHandler(viewer.scene.canvas)
+        handler = new ScreenSpaceEventHandler(viewer.scene.canvas)
 
         // Click handler
         handler.setInputAction((movement: { position: { x: number; y: number } }) => {
+          if (!viewer || viewer.isDestroyed()) return
           const pickedObject = viewer.scene.pick(movement.position)
           
           if (defined(pickedObject) && pickedObject.id) {
@@ -139,6 +156,7 @@ export function CesiumGlobe({ className }: CesiumGlobeProps) {
 
         // Hover handler
         handler.setInputAction((movement: { endPosition: { x: number; y: number } }) => {
+          if (!viewer || viewer.isDestroyed()) return
           const pickedObject = viewer.scene.pick(movement.endPosition)
           
           // Reset previous hovered entity
@@ -175,8 +193,13 @@ export function CesiumGlobe({ className }: CesiumGlobeProps) {
     initCesium()
 
     return () => {
-      if (viewerRef.current && !viewerRef.current.isDestroyed()) {
-        viewerRef.current.destroy()
+      if (handler) {
+        handler.destroy()
+        handler = null
+      }
+      if (viewer && !viewer.isDestroyed()) {
+        viewer.destroy()
+        viewer = null
         viewerRef.current = null
       }
     }
