@@ -161,7 +161,15 @@ export function NewsModal({ article, isOpen, onClose, onAnalyze, isAnalyzing }: 
               <Button
                 variant="default"
                 className="flex-1"
-                onClick={() => setShowDetail(true)}
+                onClick={() => {
+                  console.log('[v0] Analisi Dettagliata clicked')
+                  // Avvia analisi AI se non ancora fatta
+                  if (!article.aiSummary && onAnalyze && !isAnalyzing) {
+                    console.log('[v0] Starting AI analysis before detail view...')
+                    handleAnalyze()
+                  }
+                  setShowDetail(true)
+                }}
               >
                 <TrendingUp className="w-4 h-4 mr-2" />
                 Analisi Dettagliata
