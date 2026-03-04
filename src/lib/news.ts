@@ -159,12 +159,12 @@ export function articlesToPoints(articles: NewsArticle[]): NewsPoint[] {
 }
 
 /**
- * Colori per sentiment
+ * Colori per sentiment - Trading Journal palette
  */
 export const sentimentColors = {
-  positive: '#10b981', // emerald
-  negative: '#ef4444', // red
-  neutral: '#f59e0b',  // amber
+  positive: '#6fffe9', // neon-ice (bullish)
+  negative: '#ff6b6b', // destructive (bearish)
+  neutral: '#5bc0be',  // tropical-teal
 } as const
 
 /**
