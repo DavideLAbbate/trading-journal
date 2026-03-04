@@ -1,10 +1,10 @@
-
+import { CesiumGlobe } from './components/CesiumGlobe'
 
 function App() {
   return (
-    <>
-      <div id="cesiumContainer" style={{ width: '100vw', height: '100vh' }}></div>
-    </>
+    <div className="w-screen h-screen">
+      <CesiumGlobe className="w-full h-full" />
+    </div>
   )
 }
 
