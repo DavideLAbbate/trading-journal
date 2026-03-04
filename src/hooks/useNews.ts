@@ -25,6 +25,9 @@ const DEFAULT_COUNTRIES: NewsApiCountry[] = ['us', 'gb', 'de', 'fr', 'it', 'jp',
 
 /**
  * Hook principale per gestire le news
+ * Nota: Non usiamo useFetch qui perche' fetchGlobalNews non e' un semplice endpoint URL
+ * ma una funzione custom che aggrega dati da piu' fonti. SWR viene usato direttamente
+ * con un fetcher custom.
  */
 export function useNews(options: UseNewsOptions = {}): UseNewsReturn {
   const {
@@ -35,6 +38,7 @@ export function useNews(options: UseNewsOptions = {}): UseNewsReturn {
 
   const [localArticles, setLocalArticles] = useState<Map<string, Partial<NewsArticle>>>(new Map())
 
+  // SWR con fetcher custom - fetchGlobalNews aggrega dati da piu' paesi
   const {
     data: articles,
     error,

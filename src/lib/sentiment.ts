@@ -95,10 +95,12 @@ export async function analyzeSentiment(article: NewsArticle): Promise<SentimentR
   const cacheKey = getCacheKey(article)
   const cached = sentimentCache.get(cacheKey)
   if (cached) {
+    console.log('[v0] Sentiment analysis: returning cached result for', article.title.slice(0, 50))
     return cached
   }
 
   try {
+    console.log('[v0] Sentiment analysis: calling Ollama for article:', article.title.slice(0, 50))
     const prompt = buildPrompt(article)
     
     const response = await chatCompletion({
@@ -116,16 +118,18 @@ export async function analyzeSentiment(article: NewsArticle): Promise<SentimentR
       max_tokens: 500,
     })
 
+    console.log('[v0] Sentiment analysis: Ollama response received')
     const result = parseResponse(response.message.content)
     
     if (result) {
+      console.log('[v0] Sentiment analysis result:', result.sentiment, 'score:', result.score)
       // Salva in cache
       sentimentCache.set(cacheKey, result)
     }
 
     return result
   } catch (error) {
-    console.error('Sentiment analysis failed:', error)
+    console.error('[v0] Sentiment analysis failed:', error)
     return null
   }
 }
