@@ -9,11 +9,18 @@ const newsCache = new Map<string, { data: NewsArticle[]; timestamp: number }>()
 const CACHE_DURATION = 5 * 60 * 1000 // 5 minuti
 
 /**
- * Genera un ID univoco per l'articolo
+ * Genera un ID univoco per l'articolo (supporta Unicode)
  */
 function generateArticleId(article: NewsApiArticle, country: string): string {
-  const hash = `${article.title}-${article.publishedAt}-${country}`
-  return btoa(hash).slice(0, 16)
+  const hash = `${article.title || ''}-${article.publishedAt || ''}-${country}`
+  // Simple hash function that works with Unicode
+  let hashCode = 0
+  for (let i = 0; i < hash.length; i++) {
+    const char = hash.charCodeAt(i)
+    hashCode = ((hashCode << 5) - hashCode) + char
+    hashCode = hashCode & hashCode // Convert to 32bit integer
+  }
+  return `news_${Math.abs(hashCode).toString(36)}_${country}`
 }
 
 /**
