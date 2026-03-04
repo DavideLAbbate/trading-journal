@@ -1,5 +1,37 @@
 @import "tailwindcss";
 
+@theme inline {
+  /* Trading Journal Color Palette - Tailwind v4 compatible */
+  --color-prussian-blue: #0b132b;
+  --color-space-indigo: #1c2541;
+  --color-dusk-blue: #3a506b;
+  --color-tropical-teal: #5bc0be;
+  --color-neon-ice: #6fffe9;
+  
+  /* Semantic tokens */
+  --color-background: #0b132b;
+  --color-foreground: #e8f4f8;
+  --color-card: #1c2541;
+  --color-card-foreground: #e8f4f8;
+  --color-primary: #5bc0be;
+  --color-primary-foreground: #0b132b;
+  --color-secondary: #3a506b;
+  --color-secondary-foreground: #e8f4f8;
+  --color-muted: #1c2541;
+  --color-muted-foreground: #8ba5b5;
+  --color-accent: #6fffe9;
+  --color-accent-foreground: #0b132b;
+  --color-destructive: #ff6b6b;
+  --color-destructive-foreground: #ffffff;
+  --color-border: rgba(91, 192, 190, 0.2);
+  --color-ring: #5bc0be;
+  
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+}
+
 :root {
   /* Trading Journal Color Palette */
   --prussian-blue: #0b132b;
@@ -37,21 +69,22 @@
   --glass-border: rgba(91, 192, 190, 0.15);
 }
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
+@layer base {
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+  
+  body {
+    font-family: system-ui, -apple-system, sans-serif;
+    background-color: var(--background);
+    color: var(--foreground);
+    min-height: 100vh;
+    margin: 0;
+  }
 
-body {
-  font-family: system-ui, -apple-system, sans-serif;
-  background-color: var(--background);
-  color: var(--foreground);
-  min-height: 100vh;
-}
-
-#root {
-  min-height: 100vh;
+  #root {
+    min-height: 100vh;
+  }
 }
 
 /* Animations */
