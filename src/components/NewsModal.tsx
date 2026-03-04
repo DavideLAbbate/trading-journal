@@ -15,7 +15,6 @@ import {
 } from 'lucide-react'
 import type { NewsArticle } from '../types/news'
 import { formatPublishedDate } from '../lib/news'
-import { cn } from '../lib/utils'
 import { NewsDetailModal } from './NewsDetailModal'
 
 interface NewsModalProps {
@@ -44,7 +43,7 @@ export function NewsModal({ article, isOpen, onClose, onAnalyze, isAnalyzing }: 
   }[article.sentiment || 'neutral']
 
   const handleAnalyze = async () => {
-    if (onAnalyze && article) {
+    if (article && onAnalyze) {
       await onAnalyze(article)
     }
   }
@@ -175,11 +174,14 @@ export function NewsModal({ article, isOpen, onClose, onAnalyze, isAnalyzing }: 
                 </Button>
               )}
 
-              <Button variant="outline" asChild>
-                <a href={article.url} target="_blank" rel="noopener noreferrer">
-                  <ExternalLink className="w-4 h-4" />
-                </a>
-              </Button>
+              <a 
+                href={article.url} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center px-3 py-2 rounded-md border border-[var(--border)] hover:bg-[var(--muted)]"
+              >
+                <ExternalLink className="w-4 h-4" />
+              </a>
             </div>
           </div>
         </DialogContent>
