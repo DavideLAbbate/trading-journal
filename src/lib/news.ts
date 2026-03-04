@@ -1,38 +1,45 @@
 import type { NewsArticle, NewsPoint } from '../types/news'
 
 // RSS Feed sources con coordinate geografiche
+// Using multiple CORS proxies for better reliability
+const CORS_PROXIES = [
+  (url: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+  (url: string) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+  (url: string) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+]
+
 const RSS_FEEDS = [
   { 
-    url: 'https://feeds.bbci.co.uk/news/rss.xml', 
-    source: 'BBC News',
+    url: 'https://feeds.bbci.co.uk/news/business/rss.xml', 
+    source: 'BBC Business',
     country: 'United Kingdom',
     countryCode: 'GB',
     lat: 51.5074,
     lng: -0.1278,
   },
   { 
-    url: 'https://rss.cnn.com/rss/edition.rss', 
-    source: 'CNN',
+    url: 'https://rss.nytimes.com/services/xml/rss/nyt/Business.xml', 
+    source: 'NY Times Business',
     country: 'United States',
     countryCode: 'US',
     lat: 40.7128,
     lng: -74.0060,
   },
   { 
-    url: 'https://feeds.bbci.co.uk/news/world/rss.xml', 
-    source: 'BBC World',
-    country: 'United Kingdom',
-    countryCode: 'GB',
-    lat: 52.4862,
-    lng: -1.8904,
-  },
-  { 
-    url: 'https://rss.cnn.com/rss/money_news_international.rss', 
-    source: 'CNN Money',
+    url: 'https://feeds.reuters.com/reuters/businessNews', 
+    source: 'Reuters Business',
     country: 'United States',
     countryCode: 'US',
-    lat: 34.0522,
-    lng: -118.2437,
+    lat: 38.9072,
+    lng: -77.0369,
+  },
+  { 
+    url: 'https://www.theguardian.com/business/rss', 
+    source: 'The Guardian Business',
+    country: 'United Kingdom',
+    countryCode: 'GB',
+    lat: 53.4808,
+    lng: -2.2426,
   },
 ]
 
@@ -122,18 +129,37 @@ function parseRSSXML(xmlText: string): Element[] {
 }
 
 /**
+ * Try fetching with multiple CORS proxies
+ */
+async function fetchWithFallback(url: string): Promise<Response> {
+  let lastError: Error | null = null
+  
+  for (const getProxyUrl of CORS_PROXIES) {
+    try {
+      const proxyUrl = getProxyUrl(url)
+      const response = await fetch(proxyUrl, {
+        signal: AbortSignal.timeout(10000), // 10 second timeout
+      })
+      
+      if (response.ok) {
+        return response
+      }
+      lastError = new Error(`HTTP error: ${response.status}`)
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err))
+      // Continue to next proxy
+    }
+  }
+  
+  throw lastError || new Error('All proxies failed')
+}
+
+/**
  * Fetch RSS feed singolo
  */
 async function fetchRSSFeed(feedConfig: FeedConfig): Promise<NewsArticle[]> {
   try {
-    // Usa un proxy CORS per evitare problemi di cross-origin
-    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(feedConfig.url)}`
-    const response = await fetch(proxyUrl)
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error: ${response.status}`)
-    }
-    
+    const response = await fetchWithFallback(feedConfig.url)
     const xmlText = await response.text()
     const items = parseRSSXML(xmlText)
     

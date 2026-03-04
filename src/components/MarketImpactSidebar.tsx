@@ -81,20 +81,53 @@ Respond ONLY with the JSON object.`
   try {
     const response = await chatCompletion({
       messages: [
-        { role: 'system', content: 'You are an expert financial analyst. Respond only with valid JSON.' },
+        { role: 'system', content: 'You are an expert financial analyst. Respond only with valid JSON. Do not include any markdown formatting, code blocks, or extra text.' },
         { role: 'user', content: prompt }
       ],
-      temperature: 0.4,
-      max_tokens: 1000,
+      temperature: 0.3,
+      max_tokens: 1500,
     })
 
     const content = response.message.content
-    const start = content.indexOf('{')
-    const end = content.lastIndexOf('}')
     
-    if (start === -1 || end === -1) return []
+    // Remove markdown code blocks if present
+    let jsonContent = content
+      .replace(/```json\s*/gi, '')
+      .replace(/```\s*/g, '')
+      .trim()
     
-    const parsed = JSON.parse(content.slice(start, end + 1))
+    // Find the JSON object boundaries more robustly
+    const start = jsonContent.indexOf('{')
+    let end = -1
+    
+    if (start !== -1) {
+      // Find matching closing brace by counting braces
+      let braceCount = 0
+      for (let i = start; i < jsonContent.length; i++) {
+        if (jsonContent[i] === '{') braceCount++
+        if (jsonContent[i] === '}') braceCount--
+        if (braceCount === 0) {
+          end = i
+          break
+        }
+      }
+    }
+    
+    if (start === -1 || end === -1) {
+      console.warn('No valid JSON object found in response:', content.substring(0, 200))
+      return []
+    }
+    
+    const jsonString = jsonContent.slice(start, end + 1)
+    
+    // Attempt to fix common JSON issues before parsing
+    const sanitizedJson = jsonString
+      // Remove trailing commas before closing brackets/braces
+      .replace(/,(\s*[}\]])/g, '$1')
+      // Fix unquoted keys (simple cases)
+      .replace(/([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)(\s*:)/g, '$1"$2"$3')
+    
+    const parsed = JSON.parse(sanitizedJson)
     return parsed.signals || []
   } catch (error) {
     console.error('Failed to analyze market impact:', error)
