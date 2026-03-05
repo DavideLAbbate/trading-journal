@@ -1,7 +1,6 @@
 # AGENTS.md - Trading Journal Developer Guide
 
 ## Quick Start
-
 ```bash
 npm install
 npm run dev      # Start dev server
@@ -11,7 +10,6 @@ npm run preview  # Preview production build
 ```
 
 ## Commands
-
 | Command | Description |
 |---------|-------------|
 | `npm run dev` | Vite dev server with HMR |
@@ -20,37 +18,33 @@ npm run preview  # Preview production build
 | `npm run preview` | Preview production build |
 
 ### Single Checks
-
 ```bash
 # Type-check only
 npx tsc --noEmit
 
 # Lint specific file
-npx eslint src/components/Globe.tsx
+npx eslint src/App.tsx
 
 # Lint with auto-fix
 npm run lint -- --fix
 ```
 
 ## Testing
+No test script is currently defined in package.json and no test files exist in the project.
 
-**Status: No tests exist in this project.**
-
-If tests are added later (e.g., Vitest), run with:
-
+If/when tests are added (e.g., Vitest), the expected pattern would be:
 ```bash
-# Single test file
-npx vitest run src/hooks/useFetch.test.ts
+# Add to package.json: 'test': 'vitest run'
+npm test                    # Run all tests
+npm test -- src/hooks/useFetch.test.ts  # Single test file
+npm test -- -t "describe name"           # Run by test name
 ```
 
 ## Code Style
 
 ### TypeScript
-
 Strict mode enabled. Use explicit types, `interface` for objects, `type` for unions.
-
 ```typescript
-// Good
 interface GlobeProps {
   className?: string
   newsPoints: NewsPoint[]
@@ -60,9 +54,7 @@ export function Globe({ className, newsPoints }: GlobeProps) { }
 ```
 
 ### Imports
-
-Relative imports. Order: external libs -> internal lib -> components -> types.
-
+Relative imports. Use `import type` for type-only imports. Order: external libs -> internal lib -> components -> types.
 ```typescript
 import { useState } from 'react'
 import GlobeGL from 'react-globe.gl'
@@ -72,9 +64,7 @@ import type { NewsPoint } from '../types/news'
 ```
 
 ### Components
-
 PascalCase, named exports, props interface before component.
-
 ```typescript
 interface ButtonProps {
   label: string
@@ -87,9 +77,7 @@ export function Button({ label, onClick }: ButtonProps) {
 ```
 
 ### Hooks
-
 Prefix with `use`, return object with `isLoading`, `isError`, `error`.
-
 ```typescript
 interface UseFetchReturn<T> {
   data: T | undefined
@@ -100,34 +88,24 @@ interface UseFetchReturn<T> {
 ```
 
 ### Error Handling
-
-Try/catch with `console.error`, return safe fallbacks (`[]` for lists).
-
+Try/catch with `console.error`, return safe fallbacks (`[]` for lists, `null` for objects).
 ```typescript
 try {
   return await fetchData()
 } catch (err) {
-  console.error('Failed to fetch news:', err)
+  console.error('Failed to fetch:', err)
   return []
 }
 ```
 
 ### Data Fetching
-
-**SWR + axios** - see `src/lib/api.ts` and `src/hooks/useFetch.ts`.
-
+**SWR + axios** - see `src/lib/api.ts` and `src/hooks/useFetch.ts`. API failures return `[]`.
 ```typescript
-import { useFetch } from '../hooks/useFetch'
-
 const { data, isLoading } = useFetch<NewsArticle[]>('/api/news')
 ```
 
-API failures should return empty array `[]` as fallback.
-
 ### CSS
-
-**Tailwind CSS 4** with CSS variables. Use `clsx` + `tailwind-merge`.
-
+**Tailwind CSS 4** with CSS variables. Use `clsx` + `tailwind-merge` via the `cn` helper.
 ```typescript
 import { clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
@@ -138,7 +116,6 @@ function cn(...inputs: (string | undefined)[]) {
 ```
 
 ### Naming
-
 | Type | Convention | Example |
 |------|------------|---------|
 | Components | PascalCase | `Globe.tsx` |
@@ -146,8 +123,10 @@ function cn(...inputs: (string | undefined)[]) {
 | Utils | camelCase | `api.ts` |
 | Types | PascalCase | `NewsPoint` |
 
-## Project Structure
+### Environment Variables
+Prefix with `VITE_` in `.env`. Access via `import.meta.env.VITE_xxx`.
 
+## Project Structure
 ```
 src/
   components/
@@ -163,8 +142,7 @@ src/
 ```
 
 ## Dependencies
-
-- React 19 + TypeScript (strict)
+- React (see package.json) + TypeScript (strict)
 - Vite, Tailwind CSS 4
 - SWR, axios (fetching)
 - Radix UI (dialog, tabs, tooltip)
@@ -172,15 +150,9 @@ src/
 - lucide-react (icons)
 
 ## Common Tasks
+**New API Endpoint:** Add to `src/lib/api.ts` or create hook in `src/hooks/`. Use `useFetch` or `usePost`/`usePut`/`useDelete`.
 
-### New API Endpoint
-1. Add to `src/lib/api.ts` or create hook in `src/hooks/`
-2. Use `useFetch` or `usePost`/`usePut`/`useDelete`
+**New UI Component:** Add to `src/components/ui/` if reusable. Use Radix UI primitives when available.
 
-### New UI Component
-1. Add to `src/components/ui/` if reusable
-2. Use Radix UI primitives when available
-
-### Environment Variables
-1. Add to `.env` (prefix with `VITE_`)
-2. Access via `import.meta.env.VITE_xxx`
+## Cursor / Copilot Rules
+None found. No .cursor/rules/, .cursorrules, or .github/copilot-instructions.md detected.

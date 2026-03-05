@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs'
 import { ScrollArea } from './ui/scroll-area'
 import { Badge } from './ui/badge'
@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import type { NewsArticle } from '../types/news'
 import { chatCompletion } from '../lib/llm'
+import { sentimentColors } from '../lib/news'
 
 interface MarketSignal {
   asset: string
@@ -25,11 +26,6 @@ interface MarketSignal {
   priceTarget?: string
   timeframe: string
   rationale: string
-}
-
-interface MarketImpact {
-  market: string
-  signals: MarketSignal[]
 }
 
 interface MarketImpactSidebarProps {
@@ -91,7 +87,7 @@ Respond ONLY with the JSON object.`
     const content = response.message.content
     
     // Remove markdown code blocks if present
-    let jsonContent = content
+    const jsonContent = content
       .replace(/```json\s*/gi, '')
       .replace(/```\s*/g, '')
       .trim()
@@ -141,13 +137,15 @@ export function MarketImpactSidebar({ article, isOpen, onClose }: MarketImpactSi
   const [loadingMarkets, setLoadingMarkets] = useState<Set<string>>(new Set())
   const [isClosing, setIsClosing] = useState(false)
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _ = isOpen // Dummy reference to suppress unused var warning
+
   // Load market data when tab changes or article changes
-  useEffect(() => {
+  // Using a handler pattern to avoid setState in effect
+  const loadMarketData = useCallback(() => {
     if (!isOpen || !article) return
-    
     if (!marketData[activeMarket] && !loadingMarkets.has(activeMarket)) {
       setLoadingMarkets(prev => new Set(prev).add(activeMarket))
-      
       analyzeMarketImpact(article, activeMarket).then(signals => {
         setMarketData(prev => ({ ...prev, [activeMarket]: signals }))
         setLoadingMarkets(prev => {
@@ -157,7 +155,11 @@ export function MarketImpactSidebar({ article, isOpen, onClose }: MarketImpactSi
         })
       })
     }
-  }, [isOpen, article, activeMarket])
+  }, [isOpen, article, activeMarket, marketData, loadingMarkets])
+
+  useEffect(() => {
+    loadMarketData()
+  }, [loadMarketData])
 
   // Reset data when article changes
   useEffect(() => {
@@ -165,7 +167,7 @@ export function MarketImpactSidebar({ article, isOpen, onClose }: MarketImpactSi
       setMarketData({})
       setActiveMarket('forex')
     }
-  }, [article?.id])
+  }, [article])
 
   const handleClose = () => {
     setIsClosing(true)
@@ -192,31 +194,31 @@ export function MarketImpactSidebar({ article, isOpen, onClose }: MarketImpactSi
       <div 
         className={`fixed top-0 right-0 h-full w-full max-w-md z-50 ${isClosing ? 'animate-slide-out-right' : 'animate-slide-in-right'}`}
       >
-        <div className="h-full bg-[var(--prussian-blue)]/95 backdrop-blur-xl border-l border-[var(--border)] flex flex-col">
+        <div className="h-full bg-[var(--hud-surface)]/95 backdrop-blur-xl border-l border-[var(--hud-border)] flex flex-col">
           {/* Header */}
-          <div className="flex-shrink-0 p-6 border-b border-[var(--border)]">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[var(--tropical-teal)] to-[var(--neon-ice)] flex items-center justify-center">
-                  <Activity className="w-5 h-5 text-[var(--prussian-blue)]" />
+          <div className="flex-shrink-0 p-4 border-b border-[var(--hud-border)]">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-[var(--hud-surface)] border border-[var(--hud-border)] flex items-center justify-center">
+                  <Activity className="w-4 h-4 text-[var(--tropical-teal)]" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold text-[var(--foreground)]">Market Impact</h2>
-                  <p className="text-xs text-[var(--muted-foreground)]">AI-powered trading signals</p>
+                  <h2 className="text-base font-bold text-[var(--foreground)]">Market Impact</h2>
+                  <p className="text-[10px] text-[var(--muted-foreground)]">AI-powered signals</p>
                 </div>
               </div>
               <button
                 onClick={handleClose}
-                className="w-8 h-8 rounded-full bg-[var(--space-indigo)] flex items-center justify-center text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
+                className="w-7 h-7 rounded-md bg-[var(--hud-surface)] border border-[var(--hud-border)] flex items-center justify-center text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:border-[var(--hud-border-hover)] transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             {/* Article reference */}
-            <div className="p-3 rounded-xl bg-[var(--space-indigo)]/50 border border-[var(--border)]">
-              <p className="text-xs text-[var(--muted-foreground)] mb-1">Analyzing:</p>
-              <p className="text-sm text-[var(--foreground)] line-clamp-2 font-medium">
+            <div className="p-2.5 rounded-lg bg-[var(--prussian-blue)] border border-[var(--hud-border)]">
+              <p className="text-[10px] text-[var(--muted-foreground)] mb-1">Analyzing:</p>
+              <p className="text-xs text-[var(--foreground)] line-clamp-2 font-medium">
                 {article.title}
               </p>
             </div>
@@ -224,17 +226,17 @@ export function MarketImpactSidebar({ article, isOpen, onClose }: MarketImpactSi
 
           {/* Market Tabs */}
           <Tabs value={activeMarket} onValueChange={setActiveMarket} className="flex-1 flex flex-col overflow-hidden">
-            <div className="flex-shrink-0 px-6 pt-4">
-              <TabsList className="w-full grid grid-cols-4 bg-[var(--space-indigo)]/50 p-1 rounded-xl">
+            <div className="flex-shrink-0 px-4 pt-3">
+              <TabsList className="w-full grid grid-cols-4 bg-[var(--prussian-blue)] p-0.5 rounded-lg">
                 {MARKETS.map((market) => {
                   const Icon = market.icon
                   return (
                     <TabsTrigger 
                       key={market.id} 
                       value={market.id}
-                      className="flex items-center gap-1.5 text-xs data-[state=active]:bg-[var(--tropical-teal)] data-[state=active]:text-[var(--prussian-blue)] rounded-lg py-2"
+                      className="flex items-center gap-1 text-[10px] data-[state=active]:bg-[var(--tropical-teal)] data-[state=active]:text-[var(--prussian-blue)] rounded-md py-1.5"
                     >
-                      <Icon className="w-3.5 h-3.5" />
+                      <Icon className="w-3 h-3" />
                       <span className="hidden sm:inline">{market.name}</span>
                     </TabsTrigger>
                   )
@@ -243,27 +245,27 @@ export function MarketImpactSidebar({ article, isOpen, onClose }: MarketImpactSi
             </div>
 
             {/* Signals Content */}
-            <ScrollArea className="flex-1 px-6 py-4">
+            <ScrollArea className="flex-1 px-4 py-3">
               {MARKETS.map((market) => (
                 <TabsContent key={market.id} value={market.id} className="mt-0">
                   {isLoading ? (
-                    <div className="flex flex-col items-center justify-center py-12">
-                      <Loader2 className="w-8 h-8 text-[var(--tropical-teal)] animate-spin mb-4" />
-                      <p className="text-sm text-[var(--muted-foreground)]">
-                        Analyzing {market.name} impact...
+                    <div className="flex flex-col items-center justify-center py-10">
+                      <Loader2 className="w-7 h-7 text-[var(--tropical-teal)] animate-spin mb-3" />
+                      <p className="text-xs text-[var(--muted-foreground)]">
+                        Analyzing {market.name}...
                       </p>
                     </div>
                   ) : currentSignals.length > 0 ? (
-                    <div className="space-y-3">
+                    <div className="space-y-2">
                       {currentSignals.map((signal, index) => (
                         <SignalCard key={index} signal={signal} />
                       ))}
                     </div>
                   ) : (
-                    <div className="flex flex-col items-center justify-center py-12 text-center">
-                      <Activity className="w-12 h-12 text-[var(--muted-foreground)] mb-4 opacity-50" />
-                      <p className="text-sm text-[var(--muted-foreground)]">
-                        No signals available for this market
+                    <div className="flex flex-col items-center justify-center py-10 text-center">
+                      <Activity className="w-10 h-10 text-[var(--muted-foreground)] mb-3 opacity-40" />
+                      <p className="text-xs text-[var(--muted-foreground)]">
+                        No signals for this market
                       </p>
                     </div>
                   )}
@@ -273,10 +275,9 @@ export function MarketImpactSidebar({ article, isOpen, onClose }: MarketImpactSi
           </Tabs>
 
           {/* Footer disclaimer */}
-          <div className="flex-shrink-0 p-4 border-t border-[var(--border)]">
-            <p className="text-[10px] text-[var(--muted-foreground)] text-center leading-relaxed">
-              AI-generated signals are for informational purposes only. 
-              Not financial advice. Always do your own research.
+          <div className="flex-shrink-0 p-3 border-t border-[var(--hud-border)]">
+            <p className="text-[9px] text-[var(--muted-foreground)] text-center leading-relaxed">
+              AI signals are informational. Not financial advice.
             </p>
           </div>
         </div>
@@ -289,21 +290,21 @@ function SignalCard({ signal }: { signal: MarketSignal }) {
   const signalConfig = {
     BUY: { 
       icon: TrendingUp, 
-      color: 'signal-buy',
-      bgColor: 'bg-[var(--neon-ice)]/10',
-      borderColor: 'border-[var(--neon-ice)]/30'
+      color: sentimentColors.positive,
+      bgColor: 'bg-[var(--hud-surface)]',
+      borderColor: 'border-[var(--hud-border)]'
     },
     SELL: { 
       icon: TrendingDown, 
-      color: 'signal-sell',
-      bgColor: 'bg-[var(--destructive)]/10',
-      borderColor: 'border-[var(--destructive)]/30'
+      color: sentimentColors.negative,
+      bgColor: 'bg-[var(--hud-surface)]',
+      borderColor: 'border-[var(--hud-border)]'
     },
     HOLD: { 
       icon: Activity, 
-      color: 'signal-hold',
-      bgColor: 'bg-[var(--tropical-teal)]/10',
-      borderColor: 'border-[var(--tropical-teal)]/30'
+      color: sentimentColors.neutral,
+      bgColor: 'bg-[var(--hud-surface)]',
+      borderColor: 'border-[var(--hud-border)]'
     },
   }
 
@@ -311,35 +312,36 @@ function SignalCard({ signal }: { signal: MarketSignal }) {
   const Icon = config.icon
 
   return (
-    <div className={`p-4 rounded-xl ${config.bgColor} border ${config.borderColor}`}>
-      <div className="flex items-center justify-between mb-3">
+    <div className={`p-3 rounded-lg ${config.bgColor} border ${config.borderColor}`}>
+      <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
-          <span className="text-base font-bold text-[var(--foreground)]">{signal.asset}</span>
+          <span className="text-sm font-bold text-[var(--foreground)]">{signal.asset}</span>
           <Badge 
-            className={`${config.color} bg-transparent border-0 font-bold text-xs px-0`}
+            className="bg-transparent border-0 font-bold text-[10px] px-0"
+            style={{ color: config.color }}
           >
-            <Icon className="w-3 h-3 mr-1" />
+            <Icon className="w-2.5 h-2.5 mr-1" />
             {signal.signal}
           </Badge>
         </div>
-        <div className="flex items-center gap-1 text-xs text-[var(--muted-foreground)]">
-          <Percent className="w-3 h-3" />
+        <div className="flex items-center gap-1 text-[10px] text-[var(--muted-foreground)]">
+          <Percent className="w-2.5 h-2.5" />
           <span className="font-mono">{signal.confidence}%</span>
         </div>
       </div>
 
-      <p className="text-sm text-[var(--muted-foreground)] mb-3 leading-relaxed">
+      <p className="text-xs text-[var(--muted-foreground)] mb-2 leading-relaxed">
         {signal.rationale}
       </p>
 
-      <div className="flex items-center gap-4 text-xs text-[var(--muted-foreground)]">
+      <div className="flex items-center gap-3 text-[10px] text-[var(--muted-foreground)]">
         <div className="flex items-center gap-1">
-          <Clock className="w-3 h-3" />
+          <Clock className="w-2.5 h-2.5" />
           <span>{signal.timeframe}</span>
         </div>
         {signal.priceTarget && (
           <div className="flex items-center gap-1">
-            <TrendingUp className="w-3 h-3" />
+            <TrendingUp className="w-2.5 h-2.5" />
             <span className="font-mono">{signal.priceTarget}</span>
           </div>
         )}

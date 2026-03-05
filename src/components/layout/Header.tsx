@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Search, Wifi, WifiOff, RefreshCw, Settings, TrendingUp, Activity } from 'lucide-react'
+import { Search, Wifi, WifiOff, RefreshCw, Settings, TrendingUp } from 'lucide-react'
 import { Button } from '../ui/button'
 import { checkLLMHealth } from '../../lib/llm'
 import { cn } from '../../lib/utils'

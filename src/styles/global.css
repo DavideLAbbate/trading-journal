@@ -67,6 +67,20 @@
   /* Glassmorphism */
   --glass-bg: rgba(28, 37, 65, 0.85);
   --glass-border: rgba(91, 192, 190, 0.15);
+  
+  /* HUD Portal Style - Strict borders and surfaces */
+  --hud-bg: rgba(11, 19, 43, 0.92);
+  --hud-surface: #0d1526;
+  --hud-border: rgba(91, 192, 190, 0.35);
+  --hud-border-hover: rgba(91, 192, 190, 0.6);
+  --hud-accent: #5bc0be;
+  --hud-accent-glow: rgba(91, 192, 190, 0.3);
+  
+  /* Alert accents for evidence */
+  --alert-positive: #22c55e;
+  --alert-negative: #ef4444;
+  --alert-warning: #f59e0b;
+  --alert-info: #3b82f6;
 }
 
 @layer base {
@@ -260,4 +274,74 @@
 
 .signal-hold {
   color: var(--tropical-teal);
+}
+
+/* HUD Portal Style - Strict bordered panels */
+.hud-panel {
+  background: var(--hud-surface);
+  border: 1px solid var(--hud-border);
+  border-radius: var(--radius-md);
+}
+
+.hud-panel:hover {
+  border-color: var(--hud-border-hover);
+}
+
+.hud-stat {
+  background: var(--hud-surface);
+  border: 1px solid var(--hud-border);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.75rem;
+}
+
+.hud-stat-accent {
+  box-shadow: 0 0 12px var(--hud-accent-glow);
+}
+
+/* Ticker animation */
+@keyframes ticker-scroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-ticker {
+  animation: ticker-scroll 30s linear infinite;
+}
+
+/* Compact feed row */
+.feed-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  transition: all 0.15s ease;
+}
+
+.feed-row:hover {
+  background: rgba(91, 192, 190, 0.08);
+  border-color: var(--hud-border);
+}
+
+/* Country marker styles */
+.marker-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid var(--hud-surface);
+  box-shadow: 0 0 8px currentColor;
+}
+
+.marker-diamond {
+  width: 10px;
+  height: 10px;
+  transform: rotate(45deg);
+  border: 2px solid var(--hud-surface);
+  box-shadow: 0 0 8px currentColor;
+}
+
+/* Globe schematic atmosphere */
+.globe-atmosphere {
+  box-shadow: inset 0 0 60px rgba(91, 192, 190, 0.1);
 }
