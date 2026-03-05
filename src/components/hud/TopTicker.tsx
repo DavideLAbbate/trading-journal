@@ -30,6 +30,16 @@ export function TopTicker({ articles, countryCount }: TopTickerProps) {
 
   return (
     <div className="hud-panel flex items-center gap-4 px-4 py-2 overflow-hidden">
+      {/* LATEST label */}
+      <div className="flex items-center gap-2 flex-shrink-0">
+        <span className="font-mono-hud text-[10px] font-semibold uppercase tracking-widest text-[var(--tropical-teal)]">
+          Latest
+        </span>
+      </div>
+
+      {/* Divider */}
+      <div className="w-px h-6 bg-[var(--hud-border)] flex-shrink-0" />
+
       {/* Stats compact */}
       <div className="flex items-center gap-3 flex-shrink-0">
         <div className="flex items-center gap-1.5 hud-stat">

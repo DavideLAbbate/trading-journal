@@ -17,7 +17,6 @@ import {
 } from 'lucide-react'
 import type { NewsArticle } from '../types/news'
 import { chatCompletion } from '../lib/llm'
-import { sentimentColors } from '../lib/news'
 
 interface MarketSignal {
   asset: string
@@ -137,9 +136,6 @@ export function MarketImpactSidebar({ article, isOpen, onClose }: MarketImpactSi
   const [loadingMarkets, setLoadingMarkets] = useState<Set<string>>(new Set())
   const [isClosing, setIsClosing] = useState(false)
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const _ = isOpen // Dummy reference to suppress unused var warning
-
   // Load market data when tab changes or article changes
   // Using a handler pattern to avoid setState in effect
   const loadMarketData = useCallback(() => {
@@ -158,14 +154,16 @@ export function MarketImpactSidebar({ article, isOpen, onClose }: MarketImpactSi
   }, [isOpen, article, activeMarket, marketData, loadingMarkets])
 
   useEffect(() => {
-    loadMarketData()
+    queueMicrotask(loadMarketData)
   }, [loadMarketData])
 
   // Reset data when article changes
   useEffect(() => {
     if (article) {
-      setMarketData({})
-      setActiveMarket('forex')
+      queueMicrotask(() => {
+        setMarketData({})
+        setActiveMarket('forex')
+      })
     }
   }, [article])
 
@@ -194,30 +192,30 @@ export function MarketImpactSidebar({ article, isOpen, onClose }: MarketImpactSi
       <div 
         className={`fixed top-0 right-0 h-full w-full max-w-md z-50 ${isClosing ? 'animate-slide-out-right' : 'animate-slide-in-right'}`}
       >
-        <div className="h-full bg-[var(--hud-surface)]/95 backdrop-blur-xl border-l border-[var(--hud-border)] flex flex-col">
+        <div className="h-full bg-[var(--hud-surface)] border-l border-[var(--hud-border-strong)] flex flex-col">
           {/* Header */}
-          <div className="flex-shrink-0 p-4 border-b border-[var(--hud-border)]">
+          <div className="flex-shrink-0 p-4 border-b border-[var(--hud-border-strong)]">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-[var(--hud-surface)] border border-[var(--hud-border)] flex items-center justify-center">
+                <div className="w-8 h-8 rounded-sm bg-[var(--hud-surface)] border border-[var(--hud-border)] flex items-center justify-center">
                   <Activity className="w-4 h-4 text-[var(--tropical-teal)]" />
                 </div>
                 <div>
-                  <h2 className="text-base font-bold text-[var(--foreground)]">Market Impact</h2>
-                  <p className="text-[10px] text-[var(--muted-foreground)]">AI-powered signals</p>
+                  <h2 className="text-base font-semibold text-[var(--foreground)]">Market Impact</h2>
+                  <p className="font-mono-hud text-[10px] text-[var(--muted-foreground)]">AI-powered signals</p>
                 </div>
               </div>
               <button
                 onClick={handleClose}
-                className="w-7 h-7 rounded-md bg-[var(--hud-surface)] border border-[var(--hud-border)] flex items-center justify-center text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:border-[var(--hud-border-hover)] transition-colors"
+                className="w-7 h-7 rounded-sm bg-[var(--hud-surface)] border border-[var(--hud-border)] flex items-center justify-center text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:border-[var(--hud-border-hover)] transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             {/* Article reference */}
-            <div className="p-2.5 rounded-lg bg-[var(--prussian-blue)] border border-[var(--hud-border)]">
-              <p className="text-[10px] text-[var(--muted-foreground)] mb-1">Analyzing:</p>
+            <div className="p-2.5 rounded-sm bg-[var(--hud-surface-2)] border border-[var(--hud-border)]">
+              <p className="font-mono-hud text-[10px] text-[var(--muted-foreground)] mb-1">Analyzing:</p>
               <p className="text-xs text-[var(--foreground)] line-clamp-2 font-medium">
                 {article.title}
               </p>
@@ -227,14 +225,14 @@ export function MarketImpactSidebar({ article, isOpen, onClose }: MarketImpactSi
           {/* Market Tabs */}
           <Tabs value={activeMarket} onValueChange={setActiveMarket} className="flex-1 flex flex-col overflow-hidden">
             <div className="flex-shrink-0 px-4 pt-3">
-              <TabsList className="w-full grid grid-cols-4 bg-[var(--prussian-blue)] p-0.5 rounded-lg">
+              <TabsList className="w-full grid grid-cols-4 bg-[var(--hud-surface)] p-0.5 rounded-sm border border-[var(--hud-border)]">
                 {MARKETS.map((market) => {
                   const Icon = market.icon
                   return (
                     <TabsTrigger 
                       key={market.id} 
                       value={market.id}
-                      className="flex items-center gap-1 text-[10px] data-[state=active]:bg-[var(--tropical-teal)] data-[state=active]:text-[var(--prussian-blue)] rounded-md py-1.5"
+                      className="flex items-center gap-1 text-[10px] data-[state=active]:bg-[var(--hud-surface-2)] data-[state=active]:text-[var(--foreground)] rounded-sm py-1.5"
                     >
                       <Icon className="w-3 h-3" />
                       <span className="hidden sm:inline">{market.name}</span>
@@ -275,7 +273,7 @@ export function MarketImpactSidebar({ article, isOpen, onClose }: MarketImpactSi
           </Tabs>
 
           {/* Footer disclaimer */}
-          <div className="flex-shrink-0 p-3 border-t border-[var(--hud-border)]">
+          <div className="flex-shrink-0 p-3 border-t border-[var(--hud-border-strong)]">
             <p className="text-[9px] text-[var(--muted-foreground)] text-center leading-relaxed">
               AI signals are informational. Not financial advice.
             </p>
@@ -290,21 +288,21 @@ function SignalCard({ signal }: { signal: MarketSignal }) {
   const signalConfig = {
     BUY: { 
       icon: TrendingUp, 
-      color: sentimentColors.positive,
-      bgColor: 'bg-[var(--hud-surface)]',
-      borderColor: 'border-[var(--hud-border)]'
+      color: 'var(--accent-up)',
+      bgClass: 'bg-[var(--accent-up)]/10',
+      borderClass: 'border-[var(--accent-up)]'
     },
     SELL: { 
       icon: TrendingDown, 
-      color: sentimentColors.negative,
-      bgColor: 'bg-[var(--hud-surface)]',
-      borderColor: 'border-[var(--hud-border)]'
+      color: 'var(--accent-alert)',
+      bgClass: 'bg-[var(--accent-alert)]/10',
+      borderClass: 'border-[var(--accent-alert)]'
     },
     HOLD: { 
       icon: Activity, 
-      color: sentimentColors.neutral,
-      bgColor: 'bg-[var(--hud-surface)]',
-      borderColor: 'border-[var(--hud-border)]'
+      color: 'var(--tropical-teal)',
+      bgClass: 'bg-[var(--tropical-teal)]/10',
+      borderClass: 'border-[var(--tropical-teal)]'
     },
   }
 
@@ -312,12 +310,12 @@ function SignalCard({ signal }: { signal: MarketSignal }) {
   const Icon = config.icon
 
   return (
-    <div className={`p-3 rounded-lg ${config.bgColor} border ${config.borderColor}`}>
+    <div className="p-3 rounded-sm bg-[var(--hud-surface)] border border-[var(--hud-border)]">
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-bold text-[var(--foreground)]">{signal.asset}</span>
-          <Badge 
-            className="bg-transparent border-0 font-bold text-[10px] px-0"
+          <span className="font-mono-hud text-sm font-semibold text-[var(--foreground)]">{signal.asset}</span>
+          <Badge
+            className={`border px-1.5 py-0.5 text-[10px] font-semibold rounded-sm ${config.bgClass} ${config.borderClass}`}
             style={{ color: config.color }}
           >
             <Icon className="w-2.5 h-2.5 mr-1" />
@@ -326,7 +324,7 @@ function SignalCard({ signal }: { signal: MarketSignal }) {
         </div>
         <div className="flex items-center gap-1 text-[10px] text-[var(--muted-foreground)]">
           <Percent className="w-2.5 h-2.5" />
-          <span className="font-mono">{signal.confidence}%</span>
+          <span className="font-mono-hud">{signal.confidence}%</span>
         </div>
       </div>
 
@@ -337,12 +335,12 @@ function SignalCard({ signal }: { signal: MarketSignal }) {
       <div className="flex items-center gap-3 text-[10px] text-[var(--muted-foreground)]">
         <div className="flex items-center gap-1">
           <Clock className="w-2.5 h-2.5" />
-          <span>{signal.timeframe}</span>
+          <span className="font-mono-hud">{signal.timeframe}</span>
         </div>
         {signal.priceTarget && (
           <div className="flex items-center gap-1">
             <TrendingUp className="w-2.5 h-2.5" />
-            <span className="font-mono">{signal.priceTarget}</span>
+            <span className="font-mono-hud">{signal.priceTarget}</span>
           </div>
         )}
       </div>

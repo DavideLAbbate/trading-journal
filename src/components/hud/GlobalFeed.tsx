@@ -18,9 +18,9 @@ export function GlobalFeed({ articles, onArticleClick }: GlobalFeedProps) {
     const query = searchQuery.toLowerCase()
     return articles
       .filter(a => 
-        a.title.toLowerCase().includes(query) ||
-        a.country.toLowerCase().includes(query) ||
-        a.source.name.toLowerCase().includes(query)
+        (a.title || '').toLowerCase().includes(query) ||
+        (a.country || '').toLowerCase().includes(query) ||
+        (a.source?.name || '').toLowerCase().includes(query)
       )
       .slice(0, 20)
   }, [articles, searchQuery])
@@ -32,7 +32,7 @@ export function GlobalFeed({ articles, onArticleClick }: GlobalFeedProps) {
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full min-h-0">
       {/* Header */}
       <div className="p-3 border-b border-[var(--hud-border)]">
         <h3 className="text-xs font-semibold text-[var(--foreground)] uppercase tracking-wider mb-2">
@@ -52,11 +52,13 @@ export function GlobalFeed({ articles, onArticleClick }: GlobalFeedProps) {
       </div>
 
       {/* Feed list */}
-      <div className="flex-1 overflow-y-auto p-2 space-y-1">
+      <div className="flex-1 min-h-0 overflow-y-auto p-2 space-y-1">
         {filteredArticles.length > 0 ? (
           filteredArticles.map((article) => {
             const sentiment = article.sentiment || 'neutral'
             const config = sentimentConfig[sentiment]
+            const sourceName = article.source?.name || 'Unknown source'
+            const title = article.title || 'Untitled'
 
             return (
               <button
@@ -73,11 +75,11 @@ export function GlobalFeed({ articles, onArticleClick }: GlobalFeedProps) {
                 {/* Content */}
                 <div className="flex-1 min-w-0">
                   <p className="text-xs text-[var(--foreground)] line-clamp-2 leading-tight group-hover:text-[var(--tropical-teal)] transition-colors">
-                    {article.title}
+                    {title}
                   </p>
                   <div className="flex items-center gap-1.5 mt-1">
                     <span className="text-[10px] text-[var(--muted-foreground)]">
-                      {article.source.name}
+                      {sourceName}
                     </span>
                     <span className="text-[10px] text-[var(--muted-foreground)] opacity-40">•</span>
                     <span className="text-[10px] text-[var(--muted-foreground)]">

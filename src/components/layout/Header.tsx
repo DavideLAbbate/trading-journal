@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Search, Wifi, WifiOff, RefreshCw, Settings, TrendingUp } from 'lucide-react'
+import { Search, Wifi, WifiOff, RefreshCw, Settings, TrendingUp, PanelLeft, Menu, BarChart3 } from 'lucide-react'
 import { Button } from '../ui/button'
 import { checkLLMHealth } from '../../lib/llm'
 import { cn } from '../../lib/utils'
@@ -9,9 +9,22 @@ interface HeaderProps {
   onRefresh?: () => void
   isLoading?: boolean
   newsCount?: number
+  panelsVisible?: boolean
+  onTogglePanels?: () => void
+  onOpenLeftDrawer?: () => void
+  onOpenRightDrawer?: () => void
 }
 
-export function Header({ onSearch, onRefresh, isLoading, newsCount = 0 }: HeaderProps) {
+export function Header({
+  onSearch,
+  onRefresh,
+  isLoading,
+  newsCount = 0,
+  panelsVisible,
+  onTogglePanels,
+  onOpenLeftDrawer,
+  onOpenRightDrawer,
+}: HeaderProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [ollamaStatus, setOllamaStatus] = useState<'connected' | 'disconnected' | 'checking'>('checking')
 
@@ -58,6 +71,20 @@ export function Header({ onSearch, onRefresh, isLoading, newsCount = 0 }: Header
               </span>
             </div>
           </div>
+
+          {/* Panel toggle */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onTogglePanels}
+            className={cn(
+              'text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors',
+              !panelsVisible && 'text-[var(--tropical-teal)]'
+            )}
+            title={panelsVisible ? 'Hide panels' : 'Show panels'}
+          >
+            <PanelLeft className="w-4 h-4" />
+          </Button>
         </div>
 
         {/* Center: Search */}
@@ -76,6 +103,26 @@ export function Header({ onSearch, onRefresh, isLoading, newsCount = 0 }: Header
 
         {/* Right: Status + Actions */}
         <div className="flex items-center gap-3">
+          {/* Mobile drawers */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onOpenLeftDrawer}
+            className="text-[var(--muted-foreground)] hover:text-[var(--foreground)] lg:hidden"
+            title="Open feed"
+          >
+            <Menu className="w-4 h-4" />
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onOpenRightDrawer}
+            className="text-[var(--muted-foreground)] hover:text-[var(--foreground)] xl:hidden"
+            title="Open insights"
+          >
+            <BarChart3 className="w-4 h-4" />
+          </Button>
           {/* News Count */}
           {newsCount > 0 && (
             <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--muted)]/50">

@@ -35,9 +35,16 @@ export function useNews(options: UseNewsOptions = {}): UseNewsReturn {
   } = options
 
   const [localArticles, setLocalArticles] = useState<Map<string, Partial<NewsArticle>>>(new Map())
+  const localArticlesRef = useRef<Map<string, Partial<NewsArticle>>>(new Map())
   const [isCategorizing, setIsCategorizing] = useState(false)
   const [categorizationProgress, setCategorizationProgress] = useState({ completed: 0, total: 0 })
   const categorizingRef = useRef<Set<string>>(new Set())
+  const failedCategorizingRef = useRef<Set<string>>(new Set())
+  const isCategorizingRef = useRef(false)
+
+  useEffect(() => {
+    localArticlesRef.current = localArticles
+  }, [localArticles])
 
   const {
     data: articles,
@@ -57,55 +64,84 @@ export function useNews(options: UseNewsOptions = {}): UseNewsReturn {
   // Auto-categorize articles when they arrive
   useEffect(() => {
     if (!articles || !autoCategorize || articles.length === 0) return
+    if (isCategorizingRef.current) return
 
     const uncategorizedArticles = articles.filter(
       (article) => 
-        !localArticles.has(article.id) && 
+        !localArticlesRef.current.has(article.id) && 
         !categorizingRef.current.has(article.id) &&
+        !failedCategorizingRef.current.has(article.id) &&
         !article.aiSummary
     )
 
     if (uncategorizedArticles.length === 0) return
 
     const categorizeAll = async () => {
+      isCategorizingRef.current = true
       setIsCategorizing(true)
       setCategorizationProgress({ completed: 0, total: uncategorizedArticles.length })
 
-      for (let i = 0; i < uncategorizedArticles.length; i++) {
-        const article = uncategorizedArticles[i]
-        
-        // Mark as being categorized
-        categorizingRef.current.add(article.id)
+      try {
+        for (let i = 0; i < uncategorizedArticles.length; i++) {
+          const article = uncategorizedArticles[i]
 
-        try {
-          const result = await analyzeSentiment(article)
-          
-          if (result) {
+          // Mark as being categorized
+          categorizingRef.current.add(article.id)
+
+          try {
+            const result = await analyzeSentiment(article)
+
+            if (result) {
+              setLocalArticles((prev) => {
+                const next = new Map(prev)
+                next.set(article.id, {
+                  sentiment: result.sentiment,
+                  sentimentScore: result.score,
+                  category: result.category,
+                  keyPhrases: result.keyPhrases,
+                  aiSummary: result.summary,
+                })
+                return next
+              })
+            } else {
+              failedCategorizingRef.current.add(article.id)
+              setLocalArticles((prev) => {
+                const next = new Map(prev)
+                next.set(article.id, {
+                  sentiment: article.sentiment ?? 'neutral',
+                  category: article.category ?? 'general',
+                  keyPhrases: article.keyPhrases ?? [],
+                  aiSummary: article.aiSummary ?? '',
+                })
+                return next
+              })
+            }
+          } catch (err) {
+            console.error(`Failed to categorize article ${article.id}:`, err)
+            failedCategorizingRef.current.add(article.id)
             setLocalArticles((prev) => {
               const next = new Map(prev)
               next.set(article.id, {
-                sentiment: result.sentiment,
-                sentimentScore: result.score,
-                category: result.category,
-                keyPhrases: result.keyPhrases,
-                aiSummary: result.summary,
+                sentiment: article.sentiment ?? 'neutral',
+                category: article.category ?? 'general',
+                keyPhrases: article.keyPhrases ?? [],
+                aiSummary: article.aiSummary ?? '',
               })
               return next
             })
           }
-        } catch (err) {
-          console.error(`Failed to categorize article ${article.id}:`, err)
-        }
 
-        setCategorizationProgress({ completed: i + 1, total: uncategorizedArticles.length })
+          setCategorizationProgress({ completed: i + 1, total: uncategorizedArticles.length })
 
-        // Rate limiting - wait 300ms between requests
-        if (i < uncategorizedArticles.length - 1) {
-          await new Promise((resolve) => setTimeout(resolve, 300))
+          // Rate limiting - wait 300ms between requests
+          if (i < uncategorizedArticles.length - 1) {
+            await new Promise((resolve) => setTimeout(resolve, 300))
+          }
         }
+      } finally {
+        setIsCategorizing(false)
+        isCategorizingRef.current = false
       }
-
-      setIsCategorizing(false)
     }
 
     categorizeAll()
@@ -146,6 +182,7 @@ export function useNews(options: UseNewsOptions = {}): UseNewsReturn {
     isConfigured: isNewsApiConfigured(),
     refresh: () => {
       categorizingRef.current.clear()
+      failedCategorizingRef.current.clear()
       setLocalArticles(new Map())
       mutate()
     },
