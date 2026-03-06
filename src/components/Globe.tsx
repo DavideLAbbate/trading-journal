@@ -253,6 +253,7 @@ export function Globe({
       setSelectedCountry(marker)
       setCountryModalOpen(true)
 
+
       if (globeRef.current) {
         globeRef.current.pointOfView(
           { lat: marker.lat, lng: marker.lng, altitude: 1.5 },
@@ -267,6 +268,7 @@ export function Globe({
     setSidebarArticle(article)
     setShowMarketSidebar(true)
     setCountryModalOpen(false)
+    onTogglePanels?.(false)
   }, [])
 
   // ─── Polygon hover (perf-safe: ref dedup) ───
