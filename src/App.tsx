@@ -8,6 +8,7 @@ import { GlobalFeed } from './components/hud/GlobalFeed'
 import { InsightsPanel } from './components/hud/InsightsPanel'
 import { AnimatedBackground } from './components/AnimatedBackground'
 import { Dialog, DrawerContent } from './components/ui/dialog'
+import { NewspaperViewer } from './components/newspaper/NewspaperViewer'
 import { useNews } from './hooks/useNews'
 import { sentimentColors } from './lib/news'
 import type { NewsArticle } from './types/news'
@@ -26,6 +27,7 @@ function App() {
   const [leftDrawerOpen, setLeftDrawerOpen] = useState(false)
   const [rightDrawerOpen, setRightDrawerOpen] = useState(false)
   const [feedArticle, setFeedArticle] = useState<NewsArticle | null>(null)
+  const [newspaperOpen, setNewspaperOpen] = useState(false)
 
   // HUD state lifted from Globe
   const [hudFocus, setHudFocus] = useState<HudFocus>({
@@ -159,7 +161,7 @@ function App() {
         panelsVisible={panelsVisible}
         hudOverlay={hudOverlay}
         header={
-          <Header
+        <Header
             newsCount={articles.length}
             onRefresh={refresh}
             isLoading={isLoading}
@@ -167,6 +169,7 @@ function App() {
             onTogglePanels={() => setPanelsVisible(v => !v)}
             onOpenLeftDrawer={() => setLeftDrawerOpen(true)}
             onOpenRightDrawer={() => setRightDrawerOpen(true)}
+            onOpenNewspaper={() => setNewspaperOpen(true)}
           />
         }
         ticker={<TopTicker articles={articles} countryCount={countryCount} />}
@@ -200,6 +203,8 @@ function App() {
           </div>
         </DrawerContent>
       </Dialog>
+
+      <NewspaperViewer open={newspaperOpen} onClose={() => setNewspaperOpen(false)} />
     </>
   )
 }

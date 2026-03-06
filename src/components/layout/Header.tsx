@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Search, Wifi, WifiOff, RefreshCw, TrendingUp, PanelLeft, Menu, BarChart3 } from 'lucide-react'
+import { Search, Wifi, WifiOff, RefreshCw, TrendingUp, PanelLeft, Menu, BarChart3, BookOpen } from 'lucide-react'
 import { Button } from '../ui/button'
 import { checkLLMHealth } from '../../lib/llm'
 import { cn } from '../../lib/utils'
@@ -13,6 +13,7 @@ interface HeaderProps {
   onTogglePanels?: () => void
   onOpenLeftDrawer?: () => void
   onOpenRightDrawer?: () => void
+  onOpenNewspaper?: () => void
 }
 
 export function Header({
@@ -24,6 +25,7 @@ export function Header({
   onTogglePanels,
   onOpenLeftDrawer,
   onOpenRightDrawer,
+  onOpenNewspaper,
 }: HeaderProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [ollamaStatus, setOllamaStatus] = useState<'connected' | 'disconnected' | 'checking'>('checking')
@@ -148,6 +150,17 @@ export function Header({
             title="Refresh news"
           >
             <RefreshCw className={cn('w-4 h-4', isLoading && 'animate-spin')} />
+          </Button>
+
+          {/* Newspaper Button */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onOpenNewspaper}
+            className="text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
+            title="Open Newspaper"
+          >
+            <BookOpen className="w-4 h-4" />
           </Button>
 
           {/* Ollama Status Indicator — always last */}

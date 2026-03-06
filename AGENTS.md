@@ -13,12 +13,12 @@ npm run preview      # Preview production build
 ### Targeted checks (prefer these before committing)
 
 ```bash
-npx tsc --noEmit                  # Type-check only, no output — run after every change
+npx tsc --noEmit                  # Type-check only — run after every change
 npx eslint src/components/Foo.tsx # Lint a single file
 npm run lint -- --fix             # Auto-fix lint issues
 ```
 
-**Always run `npx tsc --noEmit && npm run lint` before considering a task done.** Both must exit clean (zero output).
+**Always run `npx tsc --noEmit && npm run lint` before considering a task done.** Both must exit clean.
 
 ### Testing
 
@@ -37,118 +37,102 @@ npm test -- -t "filter by sentiment"    # single describe/test
 
 ```
 src/
-  App.tsx                  # Root: orchestrates all lifted state, HUD overlay, drawers
+  App.tsx                  # Root: all lifted state, HUD overlay, drawers
   main.tsx                 # Entry point
   components/
     layout/
-      MainLayout.tsx       # Shell: header / ticker / content area with sidebar overlays + hudOverlay slot
-      Header.tsx           # Logo, panel toggle (desktop), drawer triggers (mobile), AI status, refresh
+      MainLayout.tsx       # Shell: header/ticker/globe/sidebars + hudOverlay slot
+      Header.tsx           # Logo, panel toggle, drawer triggers, AI status
     hud/
-      GlobalFeed.tsx       # Left sidebar: scrollable article list with custom scrollbar
-      InsightsPanel.tsx    # Right sidebar: sentiment stats, top countries, keywords
-      TopTicker.tsx        # Horizontal scrolling news ticker with country badges
-    ui/                    # Radix UI primitives wrapped with cn() + CVA
-      button.tsx           # CVA variants: default/destructive/outline/secondary/ghost/link
-      dialog.tsx           # DialogContent (centered modal) + DrawerContent (side panel)
-      tabs.tsx, tooltip.tsx, scroll-area.tsx, skeleton.tsx, card.tsx, badge.tsx
-    Globe.tsx              # 3D globe — exports HudFocus, GlobeStats interfaces + callbacks
-    MarketImpactSidebar.tsx # Slide-in panel on globe marker click
+      GlobalFeed.tsx       # Left sidebar: searchable article feed
+      InsightsPanel.tsx    # Right sidebar: sentiment stats, countries, keywords
+      TopTicker.tsx        # Horizontal scrolling headline ticker
+    ui/                    # Radix UI primitives + cn() + CVA
+    Globe.tsx              # 3D globe (react-globe.gl); exports HudFocus, GlobeStats
+    MarketImpactSidebar.tsx # AI market signal panel per article
     NewsModal.tsx          # Article detail modal
     CountryNewsModal.tsx   # Country-scoped article list modal
-    AnimatedBackground.tsx # Canvas star field
+    newspaper/             # 3D page-flip newspaper viewer (pure CSS transforms)
     charts/
-      SentimentGauge.tsx   # Recharts gauge
+      SentimentGauge.tsx   # Recharts semicircle gauge
   hooks/
-    useNews.ts             # SWR fetch → RSS parse → AI sentiment enrichment
+    useNews.ts             # SWR → RSS parse → AI sentiment enrichment loop
     useFetch.ts            # Generic SWR GET + SWRMutation POST/PUT/DELETE
     useLLM.ts              # Ollama health + generation hook
     useSentiment.ts        # Per-article sentiment wrapper
   lib/
     news.ts                # RSS fetch (CORS proxies), parse, cache, articlesToPoints
     sentiment.ts           # analyzeSentiment via Ollama LLM
-    llm.ts                 # checkLLMHealth, raw LLM call
+    llm.ts                 # checkLLMHealth, chatCompletion, streamChatCompletion
     api.ts                 # axios client (baseURL = VITE_API_BASE_URL || /api)
     utils.ts               # cn() helper (clsx + tailwind-merge)
   types/
     news.ts                # NewsArticle, NewsPoint, NewsCategory, NewsFilters, NewsStats
+    newspaper.ts           # NewspaperIssue, NewspaperPage, PageSection, MarketData
   styles/
     global.css             # Tailwind v4 @import, CSS variables, keyframes, custom classes
-  data/                    # Static seed data (country coordinates, etc.)
+  data/                    # Static seed data (country coordinates, capitals, newspaper pages)
 ```
 
 ---
 
 ## HUD Overlay Architecture (critical pattern)
 
-Sidebars are `position: absolute` overlays at `z-index: 10`. Any HUD element that must appear **above** the sidebars must live in the `hudOverlay` slot of `MainLayout`, which renders at `z-index: 50`.
+Sidebars are `position: absolute` at `z-index: 10`. Anything that must appear **above** them must
+live in the `hudOverlay` slot of `MainLayout`, which renders at `z-index: 50`.
 
-**Never** place a badge/indicator inside `<Globe>` or `<main>` and expect it to appear above a sidebar — `<main>` has no explicit z-index and loses to `z-index: 10`.
+**Never** place a badge inside `<Globe>` or `<main>` expecting it to appear above a sidebar.
 
-### Lifting state from Globe
-
-`Globe.tsx` exposes callbacks for state that needs to surface above it:
+`Globe.tsx` exposes callbacks for state that surfaces above it:
 
 ```typescript
-// Exported interfaces
 export interface HudFocus { name, code, count, sentiment, hasData, isGlobal }
 export interface GlobeStats { positive, neutral, negative, countries }
 
-// Props
-onHudFocusChange?: (focus: HudFocus) => void   // country hover/polygon hover
+onHudFocusChange?: (focus: HudFocus) => void   // country/polygon hover
 onStatsChange?: (stats: GlobeStats) => void     // article sentiment counts
 onMarketSidebarChange?: (open: boolean) => void // MarketImpactSidebar visibility
 ```
 
-These are consumed in `App.tsx` and rendered in `hudOverlay`.
-
-### HUD badge positioning (sidebar-aware)
-
-Badges that must shift with the sidebar use CSS custom properties + media-query classes:
+HUD badges that shift with sidebars use CSS custom properties set from JS:
 
 ```tsx
-// In App.tsx
-<div
-  className="absolute top-4 pointer-events-none hud-badge-left"
-  style={{
-    zIndex: 50,
-    '--hud-left-offset': panelsVisible ? 'calc(18rem + 1rem)' : '1rem',
-    transition: 'left 300ms ease',
-  } as React.CSSProperties}
+<div className="absolute top-4 pointer-events-none hud-badge-left"
+  style={{ zIndex: 50, '--hud-left-offset': panelsVisible ? 'calc(18rem + 1rem)' : '1rem' } as React.CSSProperties}
 >
 ```
 
-`.hud-badge-left` and `.hud-badge-right` are defined in `global.css`:
-- Mobile: always `left/right: 1rem` (no sidebar)
-- `lg+` / `xl+`: reads `--hud-left-offset` / `--hud-right-offset`
-
-Sidebar widths: left = `18rem` (lg+), right = `16rem` (xl+). Both transition at `300ms ease`.
+`.hud-badge-left` / `.hud-badge-right` in `global.css`: mobile = `1rem`; lg+/xl+ reads the CSS var.
+Sidebar widths: left `18rem` (lg+), right `16rem` (xl+). Both transition at `300ms ease`.
 
 ---
 
 ## Tailwind CSS v4 — Critical Rules
 
-This project uses **Tailwind CSS v4** via `@tailwindcss/vite`. Behaviour differs from v3:
+This project uses **Tailwind CSS v4** via `@tailwindcss/vite`. Key differences from v3:
 
-- `hidden` compiles to `display: none !important`. It **cannot** be overridden by inline styles or responsive variants like `lg:flex`. Use `lg:block` for block, or define display in `global.css` with `@media`.
-- **Dynamic class names** assembled at runtime (e.g. `` `lg:${x}` ``) are not scanned. Write full static class strings.
-- Arbitrary transition values like `transition-[width,opacity]` may not compile. Use `transition-all` or standard shorthands.
-- For responsive `display:flex` sidebars, define in `global.css` with plain `@media` blocks — see `.sidebar-left` / `.sidebar-right`.
-- `h-full` on a flex child requires the parent to have an explicit height. When in doubt use `self-stretch` or explicit `height` via inline style. **Do not** rely on `h-full` with `border-r`/`border-l` for visible dividers — use a separate `<div className="w-px h-4 bg-[var(--hud-border)]" />` element instead.
-- Custom scrollbar: use class `.hud-scrollbar` (defined in `global.css`) on any scrollable container inside a HUD panel.
+- `hidden` = `display: none !important` — cannot be overridden by responsive variants. Use `lg:block` or define display in `global.css` with plain `@media`.
+- **Dynamic class names** (e.g. `` `lg:${x}` ``) are not scanned — always write full static strings.
+- `transition-[width,opacity]` may not compile — use `transition-all` or standard shorthands.
+- For responsive sidebar `display:flex`, define in `global.css` — see `.sidebar-left` / `.sidebar-right`.
+- `h-full` on a flex child requires the parent to have an explicit height; use `self-stretch` when unsure.
+- For visible dividers, use `<div className="w-px bg-[var(--hud-border)]" />` — not `border-r` with `h-full`.
+- Scrollable HUD containers: add class `.hud-scrollbar` (defined in `global.css`).
 
 ---
 
 ## TypeScript
 
-Compiler flags active: `strict`, `noUnusedLocals`, `noUnusedParameters`, `verbatimModuleSyntax`, `noFallthroughCasesInSwitch`, `erasableSyntaxOnly`.
+Active flags: `strict`, `noUnusedLocals`, `noUnusedParameters`, `verbatimModuleSyntax`,
+`noFallthroughCasesInSwitch`, `erasableSyntaxOnly`, `noUncheckedSideEffectImports`.
 
 - `interface` for object shapes; `type` for unions, aliases, mapped types.
 - Never use `any`. Use `unknown` + type guard when the shape is genuinely unknown.
-- `import type` is **required** for type-only imports (enforced by `verbatimModuleSyntax`).
+- `import type` is **required** for type-only imports (`verbatimModuleSyntax` enforces this).
 - Unused variables are compile errors — remove or prefix with `_` if intentionally unused.
 
 ```typescript
-import type { NewsArticle, NewsPoint } from '../types/news'
+import type { NewsArticle } from '../types/news'
 
 interface FeedProps {
   articles: NewsArticle[]
@@ -171,33 +155,31 @@ No path aliases (`@/`) — use relative paths throughout.
 
 ## Component Conventions
 
-- **Named exports only.** No default exports for components.
+- **Named exports only.** Exception: `App.tsx` uses `export default`.
 - Props interface declared immediately before the component function.
-- `displayName` required on `forwardRef` components (see `button.tsx`).
-- UI primitives in `src/components/ui/` wrap Radix UI with `cn()` and expose `className` for overrides.
-- CVA (`class-variance-authority`) for components with multiple visual variants.
-- `useCallback` dependency arrays must be complete — the React Compiler lint rule `react-hooks/exhaustive-deps` is enforced as an error.
+- `displayName` required on every `forwardRef` component.
+- UI primitives in `src/components/ui/` wrap Radix with `cn()` and expose `className` for overrides.
+- Use CVA (`class-variance-authority`) for components with multiple visual variants.
+- `useCallback` dependency arrays must be exhaustive (`react-hooks/exhaustive-deps` is an ESLint error).
 
 ---
 
 ## Hooks
 
-- Prefix: `use*`. File name matches hook name (`useNews.ts` exports `useNews`).
+- Prefix: `use*`. File name matches the hook name (`useNews.ts` exports `useNews`).
 - Return a named object, not a tuple (except SWR/SWRMutation passthrough).
-- SWR key is `null` to disable fetching (not `undefined`, not `false`).
-- To force a real re-fetch bypassing cache: `mutate(undefined, { revalidate: true })`.
-- News data flow: `useNews` → SWR → `fetchGlobalNews()` → merges AI sentiment via `localArticles` Map → returns `mergedArticles`.
+- SWR key `null` disables fetching. Use `enabled ? 'key' : null` pattern.
+- News data flow: `useNews` → SWR → `fetchGlobalNews()` → AI categorization loop → `mergedArticles`.
 
 ---
 
 ## CSS / Styling
 
-- All colour tokens are CSS custom properties on `:root` in `global.css`. Never hardcode hex values in JSX — use `var(--token-name)` via Tailwind arbitrary syntax `text-[var(--foreground)]`.
-- `cn()` from `src/lib/utils.ts` for conditional class merging (clsx + tailwind-merge).
-- Custom classes (`.animate-ticker`, `.feed-row`, `.sidebar-left`, `.hud-badge-left`, etc.) live in `global.css`, not in component files.
-- Inline `style` is acceptable **only** for animated/dynamic numeric values or CSS custom properties that vary with JS state.
-
-### Key design tokens
+- All colour tokens are CSS custom properties on `:root` in `global.css`. Never hardcode hex in JSX.
+- Reference tokens via Tailwind arbitrary syntax: `text-[var(--foreground)]`.
+- `cn()` from `src/lib/utils.ts` for conditional class merging.
+- Custom classes live in `global.css`, never in component files.
+- Inline `style` is acceptable **only** for JS-driven dynamic values or CSS custom properties.
 
 | Token | Value |
 |---|---|
@@ -213,8 +195,8 @@ No path aliases (`@/`) — use relative paths throughout.
 
 ## Error Handling
 
-- Async functions: `try/catch`, log with `console.error('context:', err)`, return safe fallback.
-- Lists → `[]`, nullable objects → `null`, booleans → `false`.
+- Async functions: `try/catch`, log with `console.error('context:', err)`, return a safe fallback.
+- Fallbacks: lists → `[]`, nullable objects → `null`, booleans → `false`.
 - RSS fetching retries across multiple CORS proxies in sequence (see `lib/news.ts`).
 
 ---
@@ -223,12 +205,10 @@ No path aliases (`@/`) — use relative paths throughout.
 
 | Use case | Tool |
 |---|---|
-| Read (GET) | `useFetch<T>(url)` — SWR with `revalidateOnFocus: false` |
+| Read (GET) | `useFetch<T>(url)` — SWR, `revalidateOnFocus: false` |
 | Write (POST) | `usePost<T, P>(url)` — SWRMutation |
 | RSS / external | Direct `fetch` inside SWR fetcher in `lib/news.ts` |
-| LLM / Ollama | `lib/llm.ts` → `lib/sentiment.ts` → `useNews` categorization loop |
-
-SWR deduplication key: `null` disables the request. Use `enabled && condition ? 'key' : null`.
+| LLM / Ollama | `lib/llm.ts` → `lib/sentiment.ts` → `useNews` loop |
 
 ---
 
@@ -247,8 +227,10 @@ SWR deduplication key: `null` disables the request. Use `enabled && condition ? 
 
 ## Environment Variables
 
-Prefix: `VITE_`. Access: `import.meta.env.VITE_XXX`. Defined in `.env` (git-ignored).
+Prefix: `VITE_`. Access via `import.meta.env.VITE_XXX`. Defined in `.env` (git-ignored).
 
-| Variable | Purpose |
-|---|---|
-| `VITE_API_BASE_URL` | REST API base URL (defaults to `/api`) |
+| Variable | Default | Purpose |
+|---|---|---|
+| `VITE_API_BASE_URL` | `/api` | REST API base URL |
+| `VITE_LLM_BASE_URL` | `http://localhost:11434` | Ollama base URL |
+| `VITE_LLM_MODEL` | `llama3.2` | Ollama model for sentiment/signals |
