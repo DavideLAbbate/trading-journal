@@ -9,6 +9,7 @@ interface Newspaper3DProps {
 
 // Minimum horizontal pixels before we count a move as a drag (not a click)
 const DRAG_THRESHOLD = 8
+const FLIP_SPRING = 0.1
 
 export function Newspaper3D({ issue, className }: Newspaper3DProps) {
   const pages = issue.pages
@@ -57,7 +58,7 @@ export function Newspaper3D({ issue, className }: Newspaper3DProps) {
     const current = animProgressRef.current
     const diff = target - current
 
-    if (Math.abs(diff) < 0.001) {
+    if (Math.abs(diff) < 0.0015) {
       animProgressRef.current = target
       setFlipProgress(target)
 
@@ -90,7 +91,7 @@ export function Newspaper3D({ issue, className }: Newspaper3DProps) {
       return
     }
 
-    animProgressRef.current += diff * 0.15
+    animProgressRef.current += diff * FLIP_SPRING
     setFlipProgress(animProgressRef.current)
 
     if (animateFnRef.current) {
@@ -204,7 +205,7 @@ export function Newspaper3D({ issue, className }: Newspaper3DProps) {
     if (dir === 'forward' && page >= pages.length - 1) return
     if (dir === 'backward' && page <= 0) return
 
-    const rawProgress = absDelta / PAGE_WIDTH
+    const rawProgress = Math.pow(absDelta / PAGE_WIDTH, 0.92)
     const clamped = Math.min(1, rawProgress)
 
     animProgressRef.current = clamped

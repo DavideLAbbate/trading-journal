@@ -22,20 +22,23 @@ export function NewspaperPageFace({
       className={cn(
         'relative h-full overflow-hidden',
         'border border-[var(--hud-border)]',
-        'newspaper-paper-texture',
+        'newspaper-paper-texture newspaper-paper-grain',
         className
       )}
       style={{
         padding: '1.5rem',
-        backgroundColor: '#0f1a2e',
-        // Subtle paper texture via CSS noise pattern
+        backgroundColor: '#121927',
         backgroundImage: `
-          radial-gradient(ellipse at 20% 20%, rgba(255, 248, 230, 0.04) 0%, transparent 60%),
-          radial-gradient(ellipse at 80% 80%, rgba(255, 248, 230, 0.02) 0%, transparent 50%),
-          linear-gradient(135deg, rgba(255,255,255,0.015) 0%, transparent 50%, rgba(0,0,0,0.02) 100%)
+          linear-gradient(180deg, rgba(238, 242, 245, 0.06) 0%, rgba(255,255,255,0.01) 7%, rgba(0,0,0,0.025) 100%),
+          radial-gradient(circle at 18% 14%, rgba(248, 244, 232, 0.035) 0%, transparent 28%),
+          radial-gradient(circle at 82% 84%, rgba(248, 244, 232, 0.025) 0%, transparent 24%),
+          linear-gradient(135deg, rgba(255,255,255,0.015) 0%, transparent 48%, rgba(0,0,0,0.025) 100%)
         `,
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05), inset 0 -1px 0 rgba(0,0,0,0.18)',
       }}
     >
+      <div className="newspaper-page-edge" />
+
       {/* Tint overlay for page atmosphere */}
       {tint && (
         <div
@@ -50,7 +53,7 @@ export function NewspaperPageFace({
         />
       )}
       {/* Content area with scroll if needed */}
-      <div className="h-full overflow-y-auto hud-scrollbar pr-2">
+      <div className="relative z-[1] h-full overflow-y-auto hud-scrollbar pr-2">
         {sections.map((section, idx) => (
           <SectionRenderer key={idx} section={section} />
         ))}

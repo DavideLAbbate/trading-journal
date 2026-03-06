@@ -48,7 +48,7 @@ export function NewspaperBook({
           width: SCENE_WIDTH,
           height: PAGE_HEIGHT,
           transformStyle: 'preserve-3d',
-          transform: 'rotateX(6deg) rotateY(-7deg)',
+          transform: 'rotateX(4deg) rotateY(-5deg)',
         }}
       >
         <BookShadow />
@@ -182,11 +182,11 @@ function BookShadow() {
         position: 'absolute',
         left: 70,
         top: PAGE_HEIGHT + 28,
-        width: SCENE_WIDTH - 140,
-        height: 64,
-        background: 'radial-gradient(ellipse, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.18) 45%, transparent 75%)',
-        filter: 'blur(18px)',
-        opacity: 0.9,
+        width: SCENE_WIDTH - 120,
+        height: 52,
+        background: 'radial-gradient(ellipse, rgba(0,0,0,0.44) 0%, rgba(0,0,0,0.16) 48%, transparent 76%)',
+        filter: 'blur(16px)',
+        opacity: 0.82,
       }}
     />
   )
@@ -197,19 +197,19 @@ function ClosedJournal({ pages, isDragging }: { pages: NewspaperPage[]; isDraggi
 
   return (
     <>
-      <PageStack side="closed" count={6} pageLeft={CLOSED_LEFT} />
+      <PageStack side="closed" count={8} pageLeft={CLOSED_LEFT} />
 
       <div
         style={{
           position: 'absolute',
-          top: 10,
-          left: CLOSED_LEFT - 18,
-          width: 18,
-          height: PAGE_HEIGHT - 10,
-          background: 'linear-gradient(to right, rgba(255,255,255,0.06), rgba(91,192,190,0.06), rgba(0,0,0,0.25))',
-          borderTopLeftRadius: 6,
-          borderBottomLeftRadius: 6,
-          boxShadow: 'inset -1px 0 0 rgba(255,255,255,0.06)',
+          top: 6,
+          left: CLOSED_LEFT - 10,
+          width: 10,
+          height: PAGE_HEIGHT - 4,
+          background: 'linear-gradient(to right, rgba(8,14,24,0.46), rgba(222,228,232,0.12), rgba(12,18,28,0.34))',
+          borderTopLeftRadius: 4,
+          borderBottomLeftRadius: 4,
+          boxShadow: 'inset -1px 0 0 rgba(255,255,255,0.08)',
           transform: 'translateZ(-2px)',
         }}
       />
@@ -249,9 +249,9 @@ function InnerBoard({ pageLeft }: { pageLeft: number }) {
         left: pageLeft,
         width: PAGE_WIDTH,
         height: PAGE_HEIGHT,
-        border: '1px solid rgba(91,192,190,0.18)',
-        background: 'linear-gradient(135deg, rgba(10,19,36,0.96), rgba(7,13,26,0.9))',
-        boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.02), inset 20px 0 40px rgba(0,0,0,0.18)',
+        border: '1px solid rgba(196,206,214,0.14)',
+        background: 'linear-gradient(135deg, rgba(12,18,28,0.95), rgba(8,12,20,0.92))',
+        boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.02), inset 14px 0 30px rgba(0,0,0,0.2)',
         transform: 'translateZ(0px)',
       }}
     >
@@ -259,8 +259,8 @@ function InnerBoard({ pageLeft }: { pageLeft: number }) {
         style={{
           position: 'absolute',
           inset: 18,
-          border: '1px solid rgba(91,192,190,0.08)',
-          background: 'linear-gradient(180deg, rgba(255,255,255,0.01), transparent)',
+          border: '1px solid rgba(222,228,232,0.05)',
+          background: 'linear-gradient(180deg, rgba(255,255,255,0.015), transparent)',
         }}
       />
     </div>
@@ -277,7 +277,7 @@ function SpineGlow() {
           left: PAGE_WIDTH - 1,
           width: 2,
           height: PAGE_HEIGHT,
-          background: 'linear-gradient(to right, rgba(0,0,0,0.38), rgba(111,255,233,0.08), rgba(0,0,0,0.38))',
+          background: 'linear-gradient(to right, rgba(0,0,0,0.34), rgba(210,220,228,0.09), rgba(0,0,0,0.34))',
           transform: 'translateZ(6px)',
         }}
       />
@@ -285,13 +285,13 @@ function SpineGlow() {
         style={{
           position: 'absolute',
           top: 0,
-          left: PAGE_WIDTH - 12,
-          width: 24,
+          left: PAGE_WIDTH - 14,
+          width: 28,
           height: PAGE_HEIGHT,
-          background: 'linear-gradient(to right, rgba(0,0,0,0.14), rgba(0,0,0,0), rgba(0,0,0,0.14))',
+          background: 'linear-gradient(to right, rgba(0,0,0,0.14), rgba(255,255,255,0.015), rgba(0,0,0,0.14))',
           pointerEvents: 'none',
           transform: 'translateZ(10px)',
-          opacity: 0.9,
+          opacity: 0.75,
         }}
       />
     </>
@@ -307,7 +307,7 @@ function FlipShadow({ direction, intensity }: { direction: 'forward' | 'backward
         left: direction === 'forward' ? PAGE_WIDTH : 0,
         width: PAGE_WIDTH,
         height: PAGE_HEIGHT,
-        background: `linear-gradient(to ${direction === 'forward' ? 'left' : 'right'}, rgba(0,0,0,${intensity}), transparent 72%)`,
+        background: `linear-gradient(to ${direction === 'forward' ? 'left' : 'right'}, rgba(0,0,0,${intensity}), rgba(0,0,0,0.08) 42%, transparent 78%)`,
         pointerEvents: 'none',
         transform: 'translateZ(12px)',
       }}
@@ -327,9 +327,10 @@ function PageStack({
   return (
     <>
       {Array.from({ length: count }).map((_, idx) => {
-        const offsetX = side === 'left' ? -idx * 2 : idx * 2
-        const offsetY = idx * 0.9
-        const z = -idx - 2
+        const offsetX = side === 'left' ? -idx * 1.35 : idx * 1.35
+        const offsetY = idx * 0.65
+        const z = -idx * 0.65 - 2
+        const edgeWidth = side === 'closed' ? 8 + idx * 0.6 : 6 + idx * 0.4
 
         return (
           <div
@@ -340,15 +341,25 @@ function PageStack({
               left: pageLeft + offsetX,
               width: PAGE_WIDTH,
               height: PAGE_HEIGHT,
-              border: '1px solid rgba(91,192,190,0.08)',
-              background: idx === 0
-                ? 'linear-gradient(180deg, rgba(20,31,54,0.85), rgba(10,18,33,0.9))'
-                : 'linear-gradient(180deg, rgba(16,24,42,0.75), rgba(8,14,26,0.86))',
-              boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.015)',
-              opacity: Math.max(0.08, 0.22 - idx * 0.025),
+              border: '1px solid rgba(214,221,227,0.05)',
+              background: 'linear-gradient(180deg, rgba(208,214,220,0.18), rgba(140,150,160,0.05) 6%, rgba(11,17,26,0.14) 12%, rgba(8,12,20,0.62) 100%)',
+              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.028)',
+              opacity: Math.max(0.07, 0.2 - idx * 0.018),
               transform: `translateZ(${z}px)`,
             }}
-          />
+          >
+            <div
+              style={{
+                position: 'absolute',
+                top: 0,
+                bottom: 0,
+                [side === 'left' ? 'left' : 'right']: 0,
+                width: edgeWidth,
+                background: 'linear-gradient(to right, rgba(228,232,236,0.13), rgba(208,214,220,0.06), transparent)',
+                opacity: 0.75,
+              }}
+            />
+          </div>
         )
       })}
     </>
@@ -393,8 +404,17 @@ function FlippingPage({ pages, currentPage, flipDirection, flipProgress }: Flipp
 
   if (!page) return null
 
-  const rotation = flipDirection === 'forward' ? -180 * flipProgress : 180 * flipProgress
-  const lift = 8 + Math.sin(flipProgress * Math.PI) * 10
+  const showBackContent = flipProgress >= 0.5
+  const visibleSections = showBackContent
+    ? (flipDirection === 'forward' ? page.back : page.front)
+    : (flipDirection === 'forward' ? page.front : page.back)
+  const visibleIsBack = showBackContent
+    ? flipDirection === 'forward'
+    : flipDirection === 'backward'
+
+  const rotation = flipDirection === 'forward' ? -176 * flipProgress : 176 * flipProgress
+  const lift = 6 + Math.sin(flipProgress * Math.PI) * 9
+  const tilt = (flipDirection === 'forward' ? -1 : 1) * Math.sin(flipProgress * Math.PI) * 1.6
   const closedOpening = flipDirection === 'forward' && currentPage === 0
   const leftEase = smoothstep(Math.min(1, flipProgress * 1.25))
   const pageLeft = flipDirection === 'forward'
@@ -411,40 +431,25 @@ function FlippingPage({ pages, currentPage, flipDirection, flipProgress }: Flipp
         height: PAGE_HEIGHT,
         transformStyle: 'preserve-3d',
         transformOrigin: flipDirection === 'forward' ? 'left center' : 'right center',
-        transform: `translateZ(${lift}px) rotateY(${rotation}deg)`,
+        transform: `translateZ(${lift}px) rotateX(${tilt}deg) rotateY(${rotation}deg)`,
         zIndex: 30,
         willChange: 'transform',
+        filter: `drop-shadow(${flipDirection === 'forward' ? '-8px' : '8px'} 10px 18px rgba(0, 0, 0, 0.22))`,
       }}
     >
       <div
         style={{
           position: 'absolute',
           inset: 0,
-          backfaceVisibility: 'hidden',
-          WebkitBackfaceVisibility: 'hidden',
+          transformStyle: 'preserve-3d',
+          transform: `${showBackContent ? 'rotateY(180deg) ' : ''}translateZ(0.2px)`,
+          overflow: 'hidden',
         }}
       >
         <NewspaperPageFace
-          sections={flipDirection === 'forward' ? page.front : page.back}
+          sections={visibleSections}
           pageNumber={page.pageNumber}
-          isBack={flipDirection === 'backward'}
-          tint={page.tint}
-        />
-      </div>
-
-      <div
-        style={{
-          position: 'absolute',
-          inset: 0,
-          transform: 'rotateY(180deg)',
-          backfaceVisibility: 'hidden',
-          WebkitBackfaceVisibility: 'hidden',
-        }}
-      >
-        <NewspaperPageFace
-          sections={flipDirection === 'forward' ? page.back : page.front}
-          pageNumber={page.pageNumber}
-          isBack={flipDirection === 'forward'}
+          isBack={visibleIsBack}
           tint={page.tint}
         />
       </div>
@@ -455,9 +460,9 @@ function FlippingPage({ pages, currentPage, flipDirection, flipProgress }: Flipp
           top: 0,
           left: flipDirection === 'forward' ? 0 : 'auto',
           right: flipDirection === 'forward' ? 'auto' : 0,
-          width: 4,
+          width: 5,
           height: PAGE_HEIGHT,
-          background: 'linear-gradient(to right, rgba(255,255,255,0.12), rgba(255,255,255,0.02), transparent)',
+          background: 'linear-gradient(to right, rgba(232,236,239,0.26), rgba(232,236,239,0.08), rgba(255,255,255,0.01), transparent)',
           pointerEvents: 'none',
         }}
       />
