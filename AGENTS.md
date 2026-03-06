@@ -10,10 +10,10 @@ npm run lint         # ESLint on entire project
 npm run preview      # Preview production build
 ```
 
-### Targeted checks (prefer these before committing)
+### Targeted checks (run after every change)
 
 ```bash
-npx tsc --noEmit                  # Type-check only — run after every change
+npx tsc --noEmit                  # Type-check only
 npx eslint src/components/Foo.tsx # Lint a single file
 npm run lint -- --fix             # Auto-fix lint issues
 ```
@@ -22,13 +22,13 @@ npm run lint -- --fix             # Auto-fix lint issues
 
 ### Testing
 
-No test framework is configured. No test files exist. If Vitest is added:
+No test framework configured. If Vitest is added:
 
 ```bash
 # package.json: "test": "vitest run"
 npm test
-npm test -- src/hooks/useNews.test.ts   # single file
-npm test -- -t "filter by sentiment"    # single describe/test
+npm test -- src/hooks/useNews.test.ts  # single file
+npm test -- -t "filter by sentiment"   # single test
 ```
 
 ---
@@ -38,7 +38,6 @@ npm test -- -t "filter by sentiment"    # single describe/test
 ```
 src/
   App.tsx                  # Root: all lifted state, HUD overlay, drawers
-  main.tsx                 # Entry point
   components/
     layout/
       MainLayout.tsx       # Shell: header/ticker/globe/sidebars + hudOverlay slot
@@ -49,96 +48,99 @@ src/
       TopTicker.tsx        # Horizontal scrolling headline ticker
     ui/                    # Radix UI primitives + cn() + CVA
     Globe.tsx              # 3D globe (react-globe.gl); exports HudFocus, GlobeStats
-    MarketImpactSidebar.tsx # AI market signal panel per article
-    NewsModal.tsx          # Article detail modal
-    CountryNewsModal.tsx   # Country-scoped article list modal
-    newspaper/             # 3D page-flip newspaper viewer (pure CSS transforms)
-    charts/
-      SentimentGauge.tsx   # Recharts semicircle gauge
+    MarketImpactSidebar.tsx
+    NewsModal.tsx
+    CountryNewsModal.tsx
+    newspaper/             # 3D page-flip newspaper — see section below
+    charts/SentimentGauge.tsx
   hooks/
     useNews.ts             # SWR → RSS parse → AI sentiment enrichment loop
     useFetch.ts            # Generic SWR GET + SWRMutation POST/PUT/DELETE
     useLLM.ts              # Ollama health + generation hook
     useSentiment.ts        # Per-article sentiment wrapper
   lib/
-    news.ts                # RSS fetch (CORS proxies), parse, cache, articlesToPoints
-    sentiment.ts           # analyzeSentiment via Ollama LLM
-    llm.ts                 # checkLLMHealth, chatCompletion, streamChatCompletion
-    api.ts                 # axios client (baseURL = VITE_API_BASE_URL || /api)
-    utils.ts               # cn() helper (clsx + tailwind-merge)
+    news.ts / sentiment.ts / llm.ts / api.ts / utils.ts
   types/
-    news.ts                # NewsArticle, NewsPoint, NewsCategory, NewsFilters, NewsStats
-    newspaper.ts           # NewspaperIssue, NewspaperPage, PageSection, MarketData
-  styles/
-    global.css             # Tailwind v4 @import, CSS variables, keyframes, custom classes
-  data/                    # Static seed data (country coordinates, capitals, newspaper pages)
+    news.ts / newspaper.ts
+  styles/global.css        # Tailwind v4 @import, all CSS variables + custom classes
+  data/                    # Static seed data (coordinates, newspaper pages)
 ```
 
 ---
 
-## HUD Overlay Architecture (critical pattern)
+## Newspaper 3D Viewer — Critical Interaction Model
 
-Sidebars are `position: absolute` at `z-index: 10`. Anything that must appear **above** them must
-live in the `hudOverlay` slot of `MainLayout`, which renders at `z-index: 50`.
+The newspaper lives in `src/components/newspaper/`. **Do not change the interaction model without reading this section.**
 
-**Never** place a badge inside `<Globe>` or `<main>` expecting it to appear above a sidebar.
+### State split
 
-`Globe.tsx` exposes callbacks for state that surfaces above it:
+`Newspaper3D.tsx` owns all interaction logic and passes two orthogonal props to `NewspaperBook`:
 
-```typescript
-export interface HudFocus { name, code, count, sentiment, hasData, isGlobal }
-export interface GlobeStats { positive, neutral, negative, countries }
+| Prop | Type | Meaning |
+|---|---|---|
+| `flipDirection` | `'forward' \| 'backward' \| null` | Which page is currently moving |
+| `flipProgress` | `0 → 1` (always positive) | How far the flip has travelled |
 
-onHudFocusChange?: (focus: HudFocus) => void   // country/polygon hover
-onStatsChange?: (stats: GlobeStats) => void     // article sentiment counts
-onMarketSidebarChange?: (open: boolean) => void // MarketImpactSidebar visibility
-```
+**Never go back to a single signed `dragProgress` value** — that conflates direction and magnitude and causes side/direction confusion.
 
-HUD badges that shift with sidebars use CSS custom properties set from JS:
+### Side-aware drag rules
+
+On `pointerdown`, the click X is compared to the book spine to determine `dragSide`:
+
+- **Right page grabbed** → only leftward drag (`deltaX < 0`) activates → `flipDirection = 'forward'`
+- **Left page grabbed** → only rightward drag (`deltaX > 0`) activates → `flipDirection = 'backward'`
+- Movement in the wrong direction for the grabbed side is ignored (page is pinned at the spine)
+- At `currentPage === 0` there is no left page — clicks on the left half do nothing
+
+### Page-0 closed state
+
+When `currentPage === 0` and nothing is flipping, `NewspaperBook` renders a **single centered page** (cover), not a two-page spread. The spread width expands to `PAGE_WIDTH * 2` when `currentPage > 0` or a flip is in progress.
+
+### Flip animation
+
+All pointer events attach to `window` (not the container), so fast drags never lose the pointer. A spring RAF loop (`diff * 0.15` per frame) drives `flipProgress` toward `targetProgressRef`. On release, `resolveFlip` either commits (target → 1) or snaps back (target → 0) based on a 0.35 threshold.
+
+### Scroll-to-zoom
+
+`NewspaperViewer.tsx` listens for `wheel` on `window` (non-passive). If the pointer is over `bookRef`, the scroll is ignored. Otherwise, scale adjusts ±8% per tick, clamped `0.55 – 1.5`. A `%` badge appears top-left when zoom ≠ 100%.
+
+---
+
+## HUD Overlay Architecture
+
+Sidebars are `position: absolute` at `z-index: 10`. Elements above them must live in the `hudOverlay` slot of `MainLayout` (`z-index: 50`). **Never** put a badge inside `<Globe>` or `<main>` expecting it to clear a sidebar.
+
+HUD badges shift with sidebar state via CSS custom properties:
 
 ```tsx
 <div className="absolute top-4 pointer-events-none hud-badge-left"
   style={{ zIndex: 50, '--hud-left-offset': panelsVisible ? 'calc(18rem + 1rem)' : '1rem' } as React.CSSProperties}
->
+/>
 ```
 
-`.hud-badge-left` / `.hud-badge-right` in `global.css`: mobile = `1rem`; lg+/xl+ reads the CSS var.
-Sidebar widths: left `18rem` (lg+), right `16rem` (xl+). Both transition at `300ms ease`.
+Sidebar widths: left `18rem` (lg+), right `16rem` (xl+). Both transition `300ms ease`.
 
 ---
 
 ## Tailwind CSS v4 — Critical Rules
 
-This project uses **Tailwind CSS v4** via `@tailwindcss/vite`. Key differences from v3:
-
-- `hidden` = `display: none !important` — cannot be overridden by responsive variants. Use `lg:block` or define display in `global.css` with plain `@media`.
-- **Dynamic class names** (e.g. `` `lg:${x}` ``) are not scanned — always write full static strings.
+- `hidden` = `display: none !important` — cannot be overridden by responsive variants. Use `lg:block` or define display in `global.css` with `@media`.
+- Dynamic class names (`` `lg:${x}` ``) are not scanned — always write full static strings.
 - `transition-[width,opacity]` may not compile — use `transition-all` or standard shorthands.
-- For responsive sidebar `display:flex`, define in `global.css` — see `.sidebar-left` / `.sidebar-right`.
+- For responsive `display:flex` on sidebars, define in `global.css` — see `.sidebar-left` / `.sidebar-right`.
 - `h-full` on a flex child requires the parent to have an explicit height; use `self-stretch` when unsure.
-- For visible dividers, use `<div className="w-px bg-[var(--hud-border)]" />` — not `border-r` with `h-full`.
-- Scrollable HUD containers: add class `.hud-scrollbar` (defined in `global.css`).
+- Scrollable HUD containers: add `.hud-scrollbar` (defined in `global.css`).
 
 ---
 
 ## TypeScript
 
-Active flags: `strict`, `noUnusedLocals`, `noUnusedParameters`, `verbatimModuleSyntax`,
-`noFallthroughCasesInSwitch`, `erasableSyntaxOnly`, `noUncheckedSideEffectImports`.
+Active flags: `strict`, `noUnusedLocals`, `noUnusedParameters`, `verbatimModuleSyntax`, `noFallthroughCasesInSwitch`, `erasableSyntaxOnly`, `noUncheckedSideEffectImports`.
 
-- `interface` for object shapes; `type` for unions, aliases, mapped types.
+- `interface` for object shapes; `type` for unions/aliases/mapped types.
 - Never use `any`. Use `unknown` + type guard when the shape is genuinely unknown.
 - `import type` is **required** for type-only imports (`verbatimModuleSyntax` enforces this).
-- Unused variables are compile errors — remove or prefix with `_` if intentionally unused.
-
-```typescript
-import type { NewsArticle } from '../types/news'
-
-interface FeedProps {
-  articles: NewsArticle[]
-  onArticleClick: (article: NewsArticle) => void
-}
-```
+- Unused variables are compile errors — remove or prefix `_`.
 
 ---
 
@@ -158,32 +160,33 @@ No path aliases (`@/`) — use relative paths throughout.
 - **Named exports only.** Exception: `App.tsx` uses `export default`.
 - Props interface declared immediately before the component function.
 - `displayName` required on every `forwardRef` component.
-- UI primitives in `src/components/ui/` wrap Radix with `cn()` and expose `className` for overrides.
-- Use CVA (`class-variance-authority`) for components with multiple visual variants.
-- `useCallback` dependency arrays must be exhaustive (`react-hooks/exhaustive-deps` is an ESLint error).
+- UI primitives in `src/components/ui/` wrap Radix with `cn()` and expose `className`.
+- CVA (`class-variance-authority`) for components with multiple visual variants.
+- `useCallback` dependency arrays must be exhaustive (`react-hooks/exhaustive-deps` is an error).
+- All pointer/keyboard events that must survive fast cursor movement attach to `window`, not element.
 
 ---
 
 ## Hooks
 
-- Prefix: `use*`. File name matches the hook name (`useNews.ts` exports `useNews`).
+- Prefix `use*`. File name matches hook name (`useNews.ts` exports `useNews`).
 - Return a named object, not a tuple (except SWR/SWRMutation passthrough).
-- SWR key `null` disables fetching. Use `enabled ? 'key' : null` pattern.
-- News data flow: `useNews` → SWR → `fetchGlobalNews()` → AI categorization loop → `mergedArticles`.
+- SWR key `null` disables fetching. Pattern: `enabled ? 'key' : null`.
+- `setState` must not be called synchronously in effect bodies — use `setTimeout(..., 0)` or restructure.
 
 ---
 
 ## CSS / Styling
 
 - All colour tokens are CSS custom properties on `:root` in `global.css`. Never hardcode hex in JSX.
-- Reference tokens via Tailwind arbitrary syntax: `text-[var(--foreground)]`.
+- Reference tokens: `text-[var(--foreground)]`.
 - `cn()` from `src/lib/utils.ts` for conditional class merging.
-- Custom classes live in `global.css`, never in component files.
-- Inline `style` is acceptable **only** for JS-driven dynamic values or CSS custom properties.
+- Custom classes live in `global.css`, never inline in component files.
+- Inline `style` only for JS-driven dynamic values or CSS custom properties.
 
 | Token | Value |
 |---|---|
-| `--background` | `#0b132b` (Prussian blue) |
+| `--background` | `#0b132b` |
 | `--hud-surface` | `#0d1526` |
 | `--hud-border` | `rgba(91,192,190,0.35)` |
 | `--tropical-teal` | `#5bc0be` (primary accent) |
@@ -195,13 +198,12 @@ No path aliases (`@/`) — use relative paths throughout.
 
 ## Error Handling
 
-- Async functions: `try/catch`, log with `console.error('context:', err)`, return a safe fallback.
+- Async: `try/catch`, `console.error('context:', err)`, return safe fallback.
 - Fallbacks: lists → `[]`, nullable objects → `null`, booleans → `false`.
-- RSS fetching retries across multiple CORS proxies in sequence (see `lib/news.ts`).
 
 ---
 
-## Data Fetching Patterns
+## Data Fetching
 
 | Use case | Tool |
 |---|---|
@@ -220,14 +222,14 @@ No path aliases (`@/`) — use relative paths throughout.
 | Hook file | camelCase `use*` | `useNews.ts` |
 | Lib/util file | camelCase | `news.ts`, `utils.ts` |
 | Type/interface | PascalCase | `NewsArticle`, `HudFocus` |
-| CSS custom class | kebab-case | `.feed-row`, `.hud-badge-left` |
+| CSS class | kebab-case | `.feed-row`, `.hud-badge-left` |
 | CSS variable | `--kebab-case` | `--hud-border-strong` |
 
 ---
 
 ## Environment Variables
 
-Prefix: `VITE_`. Access via `import.meta.env.VITE_XXX`. Defined in `.env` (git-ignored).
+Prefix: `VITE_`. Access: `import.meta.env.VITE_XXX`. Defined in `.env` (git-ignored).
 
 | Variable | Default | Purpose |
 |---|---|---|

@@ -140,14 +140,26 @@ export function Newspaper3D({ issue, className }: Newspaper3DProps) {
     if (!containerRef.current?.contains(e.target as Node)) return
 
     // Determine which half of the book was clicked.
-    // The book is centered in the container; total book width = PAGE_WIDTH * 2.
-    // Left half = left page, right half = right page.
+    // The scene is always PAGE_WIDTH * 2 wide. At page 0 the closed journal is
+    // centered inside that scene, so only clicks inside the centered cover count.
     const containerRect = containerRef.current.getBoundingClientRect()
-    const bookLeft = containerRect.left + (containerRect.width - PAGE_WIDTH * 2) / 2
-    const spineX = bookLeft + PAGE_WIDTH
-    const clickedSide: 'left' | 'right' = e.clientX < spineX ? 'left' : 'right'
-
+    const sceneLeft = containerRect.left + (containerRect.width - PAGE_WIDTH * 2) / 2
     const page = currentPageRef.current
+
+    let clickedSide: 'left' | 'right'
+
+    if (page === 0) {
+      const closedLeft = sceneLeft + PAGE_WIDTH / 2
+      const closedRight = closedLeft + PAGE_WIDTH
+      const closedCenter = closedLeft + PAGE_WIDTH / 2
+
+      if (e.clientX < closedLeft || e.clientX > closedRight) return
+
+      clickedSide = e.clientX < closedCenter ? 'left' : 'right'
+    } else {
+      const spineX = sceneLeft + PAGE_WIDTH
+      clickedSide = e.clientX < spineX ? 'left' : 'right'
+    }
 
     // At page 0 there is no left page — left-side clicks do nothing
     if (clickedSide === 'left' && page === 0) return
