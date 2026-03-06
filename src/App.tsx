@@ -68,29 +68,32 @@ function App() {
       {/* Country Focus badge — hidden when market sidebar is open */}
       {!marketSidebarOpen && (
         <div
-          className="absolute top-4 pointer-events-none hud-badge-left"
+          className="absolute top-3 pointer-events-none hud-badge-left sm:top-4"
           style={{ zIndex: 50, '--hud-left-offset': leftOffset, transition: 'left 300ms ease' } as React.CSSProperties}
         >
           <div
-            className="p-3 rounded-sm hud-panel min-w-[180px] border-l-2 transition-all duration-200"
-            style={{ borderLeftColor: hudFocus.hasData ? sentimentColors[hudFocus.sentiment] : 'var(--hud-border)' }}
+            className="hud-panel max-w-[calc(100vw-2rem)] rounded-sm border-l-2 p-2.5 transition-all duration-200 sm:min-w-[180px] sm:p-3"
+            style={{
+              borderLeftColor: hudFocus.hasData ? sentimentColors[hudFocus.sentiment] : 'var(--hud-border)',
+              background: 'var(--hud-surface)',
+            }}
           >
-            <div className="flex items-center gap-2 mb-1">
+            <div className="mb-1 flex items-center gap-2">
               <span className="font-mono-hud text-[10px] font-semibold text-[var(--muted-foreground)] uppercase tracking-widest">
                 {hudFocus.code}
               </span>
-              <span className="text-sm font-semibold text-[var(--foreground)]">
+              <span className="max-w-[20ch] truncate text-sm font-semibold text-[var(--foreground)]">
                 {hudFocus.name}
               </span>
             </div>
             {hudFocus.hasData ? (
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                 <div className="w-2 h-2 rounded-full" style={{ backgroundColor: sentimentColors[hudFocus.sentiment] }} />
                 <p className="text-xs text-[var(--muted-foreground)]">
                   {hudFocus.count} {hudFocus.count === 1 ? 'article' : 'articles'}
                 </p>
                 {!hudFocus.isGlobal && (
-                  <span className="text-[10px] text-[var(--muted-foreground)] opacity-60">Click to view</span>
+                  <span className="text-[10px] text-[var(--muted-foreground)] opacity-60 hidden sm:inline">Click to view</span>
                 )}
               </div>
             ) : (
@@ -103,23 +106,23 @@ function App() {
       {/* Stats counter — bottom-left */}
       {globeStats.countries > 0 && (
         <div
-          className="absolute bottom-4 pointer-events-none hud-badge-left"
+          className="absolute bottom-3 pointer-events-none hud-badge-left sm:bottom-4"
           style={{ zIndex: 50, '--hud-left-offset': leftOffset, transition: 'left 300ms ease' } as React.CSSProperties}
         >
-          <div className="flex items-center gap-2 p-2 rounded-sm hud-panel">
-            <div className="flex items-center gap-1.5 px-2">
+          <div className="flex max-w-[calc(100vw-2rem)] flex-wrap items-center gap-1 rounded-sm hud-panel p-1.5 sm:gap-2 sm:p-2">
+            <div className="flex items-center gap-1.5 px-1.5 sm:px-2">
               <div className="w-2 h-2 rounded-full" style={{ backgroundColor: sentimentColors.positive }} />
               <span className="font-mono-hud text-xs text-[var(--muted-foreground)]">{globeStats.positive}</span>
             </div>
-            <div className="flex items-center gap-1.5 px-2">
+            <div className="flex items-center gap-1.5 px-1.5 sm:px-2">
               <div className="w-2 h-2 rounded-full" style={{ backgroundColor: sentimentColors.neutral }} />
               <span className="font-mono-hud text-xs text-[var(--muted-foreground)]">{globeStats.neutral}</span>
             </div>
-            <div className="flex items-center gap-1.5 px-2">
+            <div className="flex items-center gap-1.5 px-1.5 sm:px-2">
               <div className="w-2 h-2 rounded-full" style={{ backgroundColor: sentimentColors.negative }} />
               <span className="font-mono-hud text-xs text-[var(--muted-foreground)]">{globeStats.negative}</span>
             </div>
-            <span className="font-mono-hud text-xs text-[var(--muted-foreground)] pl-2 border-l border-[var(--hud-border)]">
+            <span className="border-[var(--hud-border)] pl-1.5 font-mono-hud text-xs text-[var(--muted-foreground)] sm:border-l sm:pl-2">
               {globeStats.countries} countries
             </span>
           </div>
@@ -129,10 +132,10 @@ function App() {
       {/* Categorization progress — top-right */}
       {isCategorizing && categorizationProgress && (
         <div
-          className="absolute top-4 pointer-events-none animate-panel-reveal hud-badge-right"
+          className="absolute top-3 pointer-events-none animate-panel-reveal hud-badge-right sm:top-4"
           style={{ zIndex: 50, '--hud-right-offset': rightOffset, transition: 'right 300ms ease' } as React.CSSProperties}
         >
-          <div className="p-3 rounded-lg hud-panel">
+          <div className="max-w-[calc(100vw-2rem)] rounded-lg hud-panel p-2.5 sm:w-48 sm:p-3">
             <div className="flex items-center gap-3">
               <div className="w-5 h-5 border-2 border-[var(--tropical-teal)] border-t-transparent rounded-full animate-spin" />
               <div>

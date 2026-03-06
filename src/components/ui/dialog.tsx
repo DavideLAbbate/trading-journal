@@ -118,9 +118,9 @@ const DrawerContent = React.forwardRef<
     <DialogOverlay />
     <DialogPrimitive.Content
       ref={ref}
-      className={cn(
-        'fixed top-0 z-50 h-full w-[85vw] max-w-sm bg-[var(--hud-surface)] p-0 shadow-2xl',
-        'duration-300 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
+        className={cn(
+          'fixed top-0 z-50 h-full w-screen max-w-none bg-[var(--hud-surface)] p-0 shadow-2xl sm:w-[24rem] sm:max-w-sm',
+          'duration-300 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
         side === 'left'
           ? 'left-0 border-r border-[var(--hud-border-strong)] data-[state=open]:slide-in-from-left data-[state=closed]:slide-out-to-left'
           : 'right-0 border-l border-[var(--hud-border-strong)] data-[state=open]:slide-in-from-right data-[state=closed]:slide-out-to-right',

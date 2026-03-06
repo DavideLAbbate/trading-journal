@@ -27,10 +27,10 @@ export function TopTicker({ articles }: TopTickerProps) {
   const isEmpty = articles.length === 0
 
   return (
-    <div className="flex items-center h-9 overflow-hidden">
+    <div className="flex h-8 items-center overflow-hidden sm:h-9">
 
       {/* LIVE pill — fixed left */}
-      <div className="flex items-center gap-1.5 flex-shrink-0 px-3 bg-[var(--hud-surface)]">
+      <div className="flex flex-shrink-0 items-center gap-1.5 bg-[var(--hud-surface)] px-2.5 sm:px-3">
         <Zap className="w-3 h-3 text-[var(--neon-ice)]" />
         <span className="font-mono-hud text-[10px] font-semibold uppercase tracking-widest text-[var(--neon-ice)]">
           Live
@@ -51,7 +51,7 @@ export function TopTicker({ articles }: TopTickerProps) {
             {tickerItems.map((article, idx) => (
               <div
                 key={`${article.id}-${idx}`}
-                className="flex items-center gap-2 flex-shrink-0 px-4"
+                className="flex flex-shrink-0 items-center gap-2 px-3 sm:px-4"
               >
                 {/* Country badge */}
                 <span
@@ -66,7 +66,7 @@ export function TopTicker({ articles }: TopTickerProps) {
                 </span>
 
                 {/* Headline */}
-                <span className="text-xs text-[var(--muted-foreground)] whitespace-nowrap">
+                <span className="max-w-[40vw] truncate text-xs text-[var(--muted-foreground)] whitespace-nowrap sm:max-w-none">
                   {article.title}
                 </span>
 

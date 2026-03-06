@@ -28,6 +28,7 @@ export function Newspaper3D({ issue, className }: Newspaper3DProps) {
   // flipProgress: 0 → 1, always positive
   const [flipProgress, setFlipProgress] = useState(0)
   const [isDragging, setIsDragging] = useState(false)
+  const [isCoarsePointer, setIsCoarsePointer] = useState(false)
 
   const containerRef = useRef<HTMLDivElement>(null)
   const rafRef = useRef<number>(0)
@@ -51,6 +52,17 @@ export function Newspaper3D({ issue, className }: Newspaper3DProps) {
   useEffect(() => {
     currentPageRef.current = currentPage
   }, [currentPage])
+
+  useEffect(() => {
+    const updatePointerMode = () => {
+      setIsCoarsePointer(window.matchMedia('(pointer: coarse)').matches)
+    }
+
+    updatePointerMode()
+    window.addEventListener('resize', updatePointerMode)
+
+    return () => window.removeEventListener('resize', updatePointerMode)
+  }, [])
 
   // Spring animation loop
   const animate = useCallback(() => {
@@ -144,21 +156,23 @@ export function Newspaper3D({ issue, className }: Newspaper3DProps) {
     // The scene is always PAGE_WIDTH * 2 wide. At page 0 the closed journal is
     // centered inside that scene, so only clicks inside the centered cover count.
     const containerRect = containerRef.current.getBoundingClientRect()
-    const sceneLeft = containerRect.left + (containerRect.width - PAGE_WIDTH * 2) / 2
+    const scale = containerRect.width > 0 ? containerRect.width / (PAGE_WIDTH * 2) : 1
+    const scaledPageWidth = PAGE_WIDTH * scale
+    const sceneLeft = containerRect.left + (containerRect.width - PAGE_WIDTH * 2 * scale) / 2
     const page = currentPageRef.current
 
     let clickedSide: 'left' | 'right'
 
     if (page === 0) {
-      const closedLeft = sceneLeft + PAGE_WIDTH / 2
-      const closedRight = closedLeft + PAGE_WIDTH
-      const closedCenter = closedLeft + PAGE_WIDTH / 2
+      const closedLeft = sceneLeft + scaledPageWidth / 2
+      const closedRight = closedLeft + scaledPageWidth
+      const closedCenter = closedLeft + scaledPageWidth / 2
 
       if (e.clientX < closedLeft || e.clientX > closedRight) return
 
       clickedSide = e.clientX < closedCenter ? 'left' : 'right'
     } else {
-      const spineX = sceneLeft + PAGE_WIDTH
+      const spineX = sceneLeft + scaledPageWidth
       clickedSide = e.clientX < spineX ? 'left' : 'right'
     }
 
@@ -205,7 +219,10 @@ export function Newspaper3D({ issue, className }: Newspaper3DProps) {
     if (dir === 'forward' && page >= pages.length - 1) return
     if (dir === 'backward' && page <= 0) return
 
-    const rawProgress = Math.pow(absDelta / PAGE_WIDTH, 0.92)
+    const containerRect = containerRef.current?.getBoundingClientRect()
+    const scale = containerRect && containerRect.width > 0 ? containerRect.width / (PAGE_WIDTH * 2) : 1
+    const scaledPageWidth = PAGE_WIDTH * scale
+    const rawProgress = Math.pow(absDelta / scaledPageWidth, 0.92)
     const clamped = Math.min(1, rawProgress)
 
     animProgressRef.current = clamped
@@ -299,7 +316,7 @@ export function Newspaper3D({ issue, className }: Newspaper3DProps) {
 
       {/* Page indicator */}
       <div
-        className="mt-6 text-[var(--muted-foreground)] text-sm"
+        className="mt-4 text-[var(--muted-foreground)] text-xs sm:mt-6 sm:text-sm"
         style={{ fontFamily: 'IBM Plex Mono, monospace' }}
       >
         {currentPage + 1} / {pages.length}
@@ -307,10 +324,10 @@ export function Newspaper3D({ issue, className }: Newspaper3DProps) {
 
       {/* Navigation hint */}
       <div
-        className="mt-2 text-[var(--muted-foreground)] text-xs opacity-60"
+        className="mt-2 text-center text-[10px] text-[var(--muted-foreground)] opacity-60 sm:text-xs"
         style={{ fontFamily: 'IBM Plex Mono, monospace' }}
       >
-        Drag a page to flip • ← → keys
+        {isCoarsePointer ? 'Swipe a page to flip' : 'Drag a page to flip • ← → keys'}
       </div>
     </div>
   )

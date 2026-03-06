@@ -13,7 +13,7 @@ interface MainLayoutProps {
 
 export function MainLayout({ children, header, leftSidebar, rightSidebar, footer, ticker, hudOverlay, panelsVisible = true }: MainLayoutProps) {
   return (
-    <div className="flex flex-col h-screen bg-[var(--background)]">
+    <div className="flex min-h-screen flex-col bg-[var(--background)]" style={{ minHeight: '100svh' }}>
       {/* Header slot */}
       {header && (
         <header className="flex-shrink-0 border-b border-[var(--hud-border)] bg-[var(--hud-surface)]">
@@ -29,7 +29,7 @@ export function MainLayout({ children, header, leftSidebar, rightSidebar, footer
       )}
 
       {/* Content area — globe fills all available space, sidebars overlay on top */}
-      <div className="flex-1 relative overflow-hidden">
+      <div className="relative flex-1 overflow-hidden min-h-0">
 
         {/* Main content: full width, globe fills everything */}
         <main className="absolute inset-0 overflow-hidden">

@@ -1,5 +1,6 @@
 import { useEffect, useCallback, useRef, useState } from 'react'
 import { NEWSPAPER_ISSUE } from '../../data/newspaper-pages'
+import { PAGE_HEIGHT, PAGE_WIDTH } from './NewspaperBook'
 import { Newspaper3D } from './Newspaper3D'
 import { cn } from '../../lib/utils'
 
@@ -11,14 +12,50 @@ interface NewspaperViewerProps {
 const ZOOM_MIN = 0.55
 const ZOOM_MAX = 1.5
 const ZOOM_STEP = 0.08
+const SCENE_WIDTH = PAGE_WIDTH * 2
+
+function getViewportMetrics() {
+  if (typeof window === 'undefined') {
+    return { fitScale: 1, isCoarsePointer: false }
+  }
+
+  const viewportWidth = window.innerWidth
+  const viewportHeight = window.innerHeight
+  const horizontalPadding = viewportWidth < 640 ? 24 : viewportWidth < 1024 ? 48 : 96
+  const verticalChrome = viewportWidth < 640 ? 220 : viewportWidth < 1024 ? 240 : 210
+  const availableWidth = Math.max(viewportWidth - horizontalPadding, 240)
+  const availableHeight = Math.max(viewportHeight - verticalChrome, 260)
+  const nextFitScale = Math.min(1, availableWidth / SCENE_WIDTH, availableHeight / PAGE_HEIGHT)
+
+  return {
+    fitScale: Math.max(0.34, nextFitScale),
+    isCoarsePointer: window.matchMedia('(pointer: coarse)').matches,
+  }
+}
 
 export function NewspaperViewer({ open, onClose }: NewspaperViewerProps) {
   const hintTimeoutRef = useRef<number | null>(null)
   const [showHint, setShowHint] = useState(true)
+  const [fitScale, setFitScale] = useState(() => getViewportMetrics().fitScale)
+  const [isCoarsePointer, setIsCoarsePointer] = useState(() => getViewportMetrics().isCoarsePointer)
 
-  // Zoom state — driven by wheel outside the newspaper book
+  // Zoom state — relative to the fitted scale
   const [zoom, setZoom] = useState(1)
   const bookRef = useRef<HTMLDivElement>(null)
+
+  const displayScale = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN * fitScale, fitScale * zoom))
+
+  const updateViewportMetrics = useCallback(() => {
+    const metrics = getViewportMetrics()
+    setFitScale(metrics.fitScale)
+    setIsCoarsePointer(metrics.isCoarsePointer)
+  }, [])
+
+  useEffect(() => {
+    window.addEventListener('resize', updateViewportMetrics)
+
+    return () => window.removeEventListener('resize', updateViewportMetrics)
+  }, [updateViewportMetrics])
 
   // Handle showing/hiding hint + reset zoom based on open state
   useEffect(() => {
@@ -76,6 +113,18 @@ export function NewspaperViewer({ open, onClose }: NewspaperViewerProps) {
     })
   }, [])
 
+  const handleZoomIn = useCallback(() => {
+    setZoom(prev => Math.min(ZOOM_MAX, prev + ZOOM_STEP * 1.5))
+  }, [])
+
+  const handleZoomOut = useCallback(() => {
+    setZoom(prev => Math.max(ZOOM_MIN, prev - ZOOM_STEP * 1.5))
+  }, [])
+
+  const handleZoomReset = useCallback(() => {
+    setZoom(1)
+  }, [])
+
   useEffect(() => {
     if (!open) return
     // passive: false so we can preventDefault and block page scroll
@@ -118,13 +167,13 @@ export function NewspaperViewer({ open, onClose }: NewspaperViewerProps) {
       >
         {/* Title bar */}
         <div
-          className="mt-6 text-center flex-shrink-0"
+          className="mt-4 px-16 text-center flex-shrink-0 sm:mt-6"
           style={{ fontFamily: 'IBM Plex Mono, monospace' }}
         >
-          <h1 className="text-2xl font-bold text-[var(--foreground)] tracking-wide">
+          <h1 className="text-lg font-bold text-[var(--foreground)] tracking-wide sm:text-2xl">
             {NEWSPAPER_ISSUE.title}
           </h1>
-          <div className="text-[var(--muted-foreground)] text-sm mt-1">
+          <div className="mt-1 text-xs text-[var(--muted-foreground)] sm:text-sm">
             {NEWSPAPER_ISSUE.edition} • {NEWSPAPER_ISSUE.date}
           </div>
         </div>
@@ -132,7 +181,7 @@ export function NewspaperViewer({ open, onClose }: NewspaperViewerProps) {
         {/* Close button */}
         <button
           onClick={onClose}
-          className="absolute top-6 right-6 w-10 h-10 flex items-center justify-center text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors border border-[var(--hud-border)] hover:border-[var(--tropical-teal)] bg-[var(--hud-surface)]"
+          className="absolute right-3 top-3 flex h-10 w-10 items-center justify-center border border-[var(--hud-border)] bg-[var(--hud-surface)] text-[var(--muted-foreground)] transition-colors hover:border-[var(--tropical-teal)] hover:text-[var(--foreground)] sm:right-6 sm:top-6"
           style={{
             fontFamily: 'IBM Plex Mono, monospace',
             fontSize: '1.5rem',
@@ -144,21 +193,21 @@ export function NewspaperViewer({ open, onClose }: NewspaperViewerProps) {
         </button>
 
         {/* Zoom indicator — shown only when not at 100% */}
-        {zoom !== 1 && (
+        {Math.abs(displayScale - fitScale) > 0.01 && (
           <div
-            className="absolute top-6 left-6 text-[var(--muted-foreground)] text-xs border border-[var(--hud-border)] bg-[var(--hud-surface)] px-2 py-1 pointer-events-none"
+            className="pointer-events-none absolute left-3 top-3 border border-[var(--hud-border)] bg-[var(--hud-surface)] px-2 py-1 text-xs text-[var(--muted-foreground)] sm:left-6 sm:top-6"
             style={{ fontFamily: 'IBM Plex Mono, monospace' }}
           >
-            {Math.round(zoom * 100)}%
+            {Math.round(displayScale * 100)}%
           </div>
         )}
 
         {/* The 3D newspaper — wrapped in zoom container */}
-        <div className="flex-1 flex items-center justify-center mt-4 w-full overflow-hidden">
+        <div className="mt-2 flex w-full flex-1 items-center justify-center overflow-hidden px-3 pb-24 sm:mt-4 sm:px-6 sm:pb-20">
           <div
             ref={bookRef}
             style={{
-              transform: `scale(${zoom})`,
+              transform: `scale(${displayScale})`,
               transformOrigin: 'center center',
               transition: 'transform 0.15s ease-out',
             }}
@@ -167,15 +216,42 @@ export function NewspaperViewer({ open, onClose }: NewspaperViewerProps) {
           </div>
         </div>
 
+        <div className="absolute bottom-16 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full border border-[var(--hud-border)] bg-[var(--hud-surface)]/95 px-2 py-2 shadow-lg backdrop-blur sm:bottom-7">
+          <button
+            type="button"
+            onClick={handleZoomOut}
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--hud-border)] text-lg text-[var(--foreground)] transition-colors hover:border-[var(--tropical-teal)]"
+            aria-label="Zoom out"
+          >
+            -
+          </button>
+          <button
+            type="button"
+            onClick={handleZoomReset}
+            className="min-w-16 rounded-full border border-[var(--hud-border)] px-3 py-2 text-[10px] uppercase tracking-[0.2em] text-[var(--muted-foreground)] transition-colors hover:border-[var(--tropical-teal)] hover:text-[var(--foreground)]"
+            aria-label="Reset zoom"
+          >
+            {Math.round(displayScale * 100)}%
+          </button>
+          <button
+            type="button"
+            onClick={handleZoomIn}
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--hud-border)] text-lg text-[var(--foreground)] transition-colors hover:border-[var(--tropical-teal)]"
+            aria-label="Zoom in"
+          >
+            +
+          </button>
+        </div>
+
         {/* Hint — fades out after 3 s */}
         <div
           className={cn(
-            'absolute bottom-8 text-[var(--muted-foreground)] text-sm font-mono transition-opacity duration-500',
+            'absolute bottom-3 px-4 text-center text-xs font-mono text-[var(--muted-foreground)] transition-opacity duration-500 sm:bottom-8 sm:text-sm',
             showHint ? 'opacity-100' : 'opacity-0 pointer-events-none'
           )}
           style={{ fontFamily: 'IBM Plex Mono, monospace' }}
         >
-          Drag to flip • scroll to zoom
+          {isCoarsePointer ? 'Swipe to flip • use +/- to zoom' : 'Drag to flip • scroll or use +/- to zoom'}
         </div>
       </div>
     </div>
