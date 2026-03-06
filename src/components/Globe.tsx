@@ -32,6 +32,7 @@ interface GlobeProps {
   onTogglePanels?: (visible: boolean) => void
   onHudFocusChange?: (focus: HudFocus) => void
   onStatsChange?: (stats: GlobeStats) => void
+  onMarketSidebarChange?: (open: boolean) => void
 }
 
 /**
@@ -119,6 +120,7 @@ export function Globe({
   onTogglePanels,
   onHudFocusChange,
   onStatsChange,
+  onMarketSidebarChange,
 }: GlobeProps) {
   const globeRef = useRef<GlobeMethods | undefined>(undefined)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -136,6 +138,11 @@ export function Globe({
   const hoveredPolygonRef = useRef<string | null>(null)
   const [hoveredPolygonIso, setHoveredPolygonIso] = useState<string | null>(null)
   const boundElementsRef = useRef<WeakSet<HTMLDivElement>>(new WeakSet())
+
+  // Notify parent when market sidebar open state changes
+  useEffect(() => {
+    onMarketSidebarChange?.(showMarketSidebar)
+  }, [showMarketSidebar, onMarketSidebarChange])
 
   // External article bridge: when App passes an article from GlobalFeed, open sidebar
   useEffect(() => {

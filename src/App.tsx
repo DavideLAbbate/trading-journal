@@ -13,21 +13,18 @@ import { sentimentColors } from './lib/news'
 import type { NewsArticle } from './types/news'
 
 function App() {
-  const { 
-    articles, 
-    points, 
-    isLoading, 
+  const {
+    articles,
+    points,
+    isLoading,
     isCategorizing,
     categorizationProgress,
     refresh,
   } = useNews({ autoCategorize: true })
 
-  // Panel visibility toggle
   const [panelsVisible, setPanelsVisible] = useState(true)
   const [leftDrawerOpen, setLeftDrawerOpen] = useState(false)
   const [rightDrawerOpen, setRightDrawerOpen] = useState(false)
-
-  // Feed article → Globe sidebar bridge
   const [feedArticle, setFeedArticle] = useState<NewsArticle | null>(null)
 
   // HUD state lifted from Globe
@@ -40,6 +37,7 @@ function App() {
     isGlobal: true,
   })
   const [globeStats, setGlobeStats] = useState<GlobeStats>({ positive: 0, neutral: 0, negative: 0, countries: 0 })
+  const [marketSidebarOpen, setMarketSidebarOpen] = useState(false)
 
   const handleArticleClick = useCallback((article: NewsArticle) => {
     setPanelsVisible(false)
@@ -52,69 +50,59 @@ function App() {
   }, [articles])()
 
   const renderLeftSidebar = (key: string) => (
-    <GlobalFeed
-      key={key}
-      articles={articles}
-      onArticleClick={handleArticleClick}
-    />
+    <GlobalFeed key={key} articles={articles} onArticleClick={handleArticleClick} />
   )
 
   const renderRightSidebar = (key: string) => (
-    <InsightsPanel
-      key={key}
-      articles={articles}
-    />
+    <InsightsPanel key={key} articles={articles} />
   )
 
-  // HUD overlay — z-index 50, above sidebars (z-10)
+  // Shared left offset (both top and bottom badges)
+  const leftOffset = panelsVisible ? 'calc(18rem + 1rem)' : '1rem'
+  const rightOffset = panelsVisible ? 'calc(16rem + 1rem)' : '1rem'
+
   const hudOverlay = (
     <>
-      {/* Country Focus badge — top-left, shifts right with left sidebar */}
-      <div
-        className="absolute top-4 pointer-events-none hud-badge-left"
-        style={{
-          zIndex: 50,
-          '--hud-left-offset': panelsVisible ? 'calc(18rem + 1rem)' : '1rem',
-          transition: 'left 300ms ease',
-        } as React.CSSProperties}
-      >
+      {/* Country Focus badge — hidden when market sidebar is open */}
+      {!marketSidebarOpen && (
         <div
-          className="p-3 rounded-sm hud-panel min-w-[180px] border-l-2 transition-all duration-200"
-          style={{ borderLeftColor: hudFocus.hasData ? sentimentColors[hudFocus.sentiment] : 'var(--hud-border)' }}
+          className="absolute top-4 pointer-events-none hud-badge-left"
+          style={{ zIndex: 50, '--hud-left-offset': leftOffset, transition: 'left 300ms ease' } as React.CSSProperties}
         >
-          <div className="flex items-center gap-2 mb-1">
-            <span className="font-mono-hud text-[10px] font-semibold text-[var(--muted-foreground)] uppercase tracking-widest">
-              {hudFocus.code}
-            </span>
-            <span className="text-sm font-semibold text-[var(--foreground)]">
-              {hudFocus.name}
-            </span>
-          </div>
-          {hudFocus.hasData ? (
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: sentimentColors[hudFocus.sentiment] }} />
-              <p className="text-xs text-[var(--muted-foreground)]">
-                {hudFocus.count} {hudFocus.count === 1 ? 'article' : 'articles'}
-              </p>
-              {!hudFocus.isGlobal && (
-                <span className="text-[10px] text-[var(--muted-foreground)] opacity-60">Click to view</span>
-              )}
+          <div
+            className="p-3 rounded-sm hud-panel min-w-[180px] border-l-2 transition-all duration-200"
+            style={{ borderLeftColor: hudFocus.hasData ? sentimentColors[hudFocus.sentiment] : 'var(--hud-border)' }}
+          >
+            <div className="flex items-center gap-2 mb-1">
+              <span className="font-mono-hud text-[10px] font-semibold text-[var(--muted-foreground)] uppercase tracking-widest">
+                {hudFocus.code}
+              </span>
+              <span className="text-sm font-semibold text-[var(--foreground)]">
+                {hudFocus.name}
+              </span>
             </div>
-          ) : (
-            <p className="text-xs text-[var(--muted-foreground)] opacity-60">Loading...</p>
-          )}
+            {hudFocus.hasData ? (
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: sentimentColors[hudFocus.sentiment] }} />
+                <p className="text-xs text-[var(--muted-foreground)]">
+                  {hudFocus.count} {hudFocus.count === 1 ? 'article' : 'articles'}
+                </p>
+                {!hudFocus.isGlobal && (
+                  <span className="text-[10px] text-[var(--muted-foreground)] opacity-60">Click to view</span>
+                )}
+              </div>
+            ) : (
+              <p className="text-xs text-[var(--muted-foreground)] opacity-60">Loading...</p>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Stats counter — bottom-left, shifts right with left sidebar */}
+      {/* Stats counter — bottom-left */}
       {globeStats.countries > 0 && (
         <div
           className="absolute bottom-4 pointer-events-none hud-badge-left"
-          style={{
-            zIndex: 50,
-            '--hud-left-offset': panelsVisible ? 'calc(18rem + 1rem)' : '1rem',
-            transition: 'left 300ms ease',
-          } as React.CSSProperties}
+          style={{ zIndex: 50, '--hud-left-offset': leftOffset, transition: 'left 300ms ease' } as React.CSSProperties}
         >
           <div className="flex items-center gap-2 p-2 rounded-sm hud-panel">
             <div className="flex items-center gap-1.5 px-2">
@@ -136,15 +124,11 @@ function App() {
         </div>
       )}
 
-      {/* Categorization progress — top-right, shifts left with right sidebar */}
+      {/* Categorization progress — top-right */}
       {isCategorizing && categorizationProgress && (
         <div
           className="absolute top-4 pointer-events-none animate-panel-reveal hud-badge-right"
-          style={{
-            zIndex: 50,
-            '--hud-right-offset': panelsVisible ? 'calc(16rem + 1rem)' : '1rem',
-            transition: 'right 300ms ease',
-          } as React.CSSProperties}
+          style={{ zIndex: 50, '--hud-right-offset': rightOffset, transition: 'right 300ms ease' } as React.CSSProperties}
         >
           <div className="p-3 rounded-lg hud-panel">
             <div className="flex items-center gap-3">
@@ -185,12 +169,7 @@ function App() {
             onOpenRightDrawer={() => setRightDrawerOpen(true)}
           />
         }
-        ticker={
-          <TopTicker
-            articles={articles}
-            countryCount={countryCount}
-          />
-        }
+        ticker={<TopTicker articles={articles} countryCount={countryCount} />}
         leftSidebar={renderLeftSidebar('left-rail')}
         rightSidebar={renderRightSidebar('right-rail')}
       >
@@ -202,10 +181,10 @@ function App() {
           onTogglePanels={() => setPanelsVisible(v => !v)}
           onHudFocusChange={setHudFocus}
           onStatsChange={setGlobeStats}
+          onMarketSidebarChange={setMarketSidebarOpen}
         />
       </MainLayout>
 
-      {/* Side drawers */}
       <Dialog open={leftDrawerOpen} onOpenChange={setLeftDrawerOpen}>
         <DrawerContent side="left">
           <div className="h-full flex flex-col overflow-hidden">
