@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Search, Wifi, WifiOff, RefreshCw, Settings, TrendingUp, PanelLeft, Menu, BarChart3 } from 'lucide-react'
+import { Search, Wifi, WifiOff, RefreshCw, TrendingUp, PanelLeft, Menu, BarChart3 } from 'lucide-react'
 import { Button } from '../ui/button'
 import { checkLLMHealth } from '../../lib/llm'
 import { cn } from '../../lib/utils'
@@ -103,7 +103,7 @@ export function Header({
 
         {/* Right: Status + Actions */}
         <div className="flex items-center gap-3">
-          {/* Mobile drawers */}
+          {/* Mobile feed drawer — only on mobile */}
           <Button
             variant="ghost"
             size="icon"
@@ -114,15 +114,17 @@ export function Header({
             <Menu className="w-4 h-4" />
           </Button>
 
+          {/* Insights drawer — only on mobile/tablet (hidden on lg+) */}
           <Button
             variant="ghost"
             size="icon"
             onClick={onOpenRightDrawer}
-            className="text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+            className="text-[var(--muted-foreground)] hover:text-[var(--foreground)] xl:hidden"
             title="Open insights"
           >
             <BarChart3 className="w-4 h-4" />
           </Button>
+
           {/* News Count */}
           {newsCount > 0 && (
             <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--muted)]/50">
@@ -133,7 +135,22 @@ export function Header({
             </div>
           )}
 
-          {/* Ollama Status Indicator */}
+          {/* Refresh Button */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onRefresh}
+            disabled={isLoading}
+            className={cn(
+              'text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors',
+              isLoading && 'opacity-60 cursor-not-allowed'
+            )}
+            title="Refresh news"
+          >
+            <RefreshCw className={cn('w-4 h-4', isLoading && 'animate-spin')} />
+          </Button>
+
+          {/* Ollama Status Indicator — always last */}
           <div
             className={cn(
               'flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors',
@@ -155,26 +172,6 @@ export function Header({
               {ollamaStatus === 'connected' ? 'AI Online' : ollamaStatus === 'disconnected' ? 'AI Offline' : 'Checking...'}
             </span>
           </div>
-
-          {/* Refresh Button */}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onRefresh}
-            disabled={isLoading}
-            className="text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
-          >
-            <RefreshCw className={cn('w-4 h-4', isLoading && 'animate-spin')} />
-          </Button>
-
-          {/* Settings Button */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
-          >
-            <Settings className="w-4 h-4" />
-          </Button>
         </div>
       </div>
     </header>

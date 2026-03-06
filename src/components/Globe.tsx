@@ -8,14 +8,22 @@ import { sentimentColors } from '../lib/news'
 import { getCoordinatesByCountryCode, getCoordinatesByCountryName } from '../data/country-coordinates'
 import type { NewsPoint, NewsArticle } from '../types/news'
 
+export interface HudFocus {
+  name: string
+  code: string
+  count: number
+  sentiment: 'positive' | 'negative' | 'neutral'
+  hasData: boolean
+  isGlobal: boolean
+}
+
 interface GlobeProps {
   className?: string
   newsPoints: NewsPoint[]
   isLoading?: boolean
-  isCategorizing?: boolean
-  categorizationProgress?: { completed: number; total: number }
   externalArticle?: NewsArticle | null
   onTogglePanels?: (visible: boolean) => void
+  onHudFocusChange?: (focus: HudFocus) => void
 }
 
 /**
@@ -99,10 +107,9 @@ export function Globe({
   className,
   newsPoints,
   isLoading,
-  isCategorizing,
-  categorizationProgress,
   externalArticle,
-  onTogglePanels
+  onTogglePanels,
+  onHudFocusChange,
 }: GlobeProps) {
   const globeRef = useRef<GlobeMethods | undefined>(undefined)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -319,7 +326,7 @@ export function Globe({
     return 0.005
   }, [hoveredPolygonIso])
 
-  // ─── Unified HUD Focus (marker hover OR polygon hover) ───
+  // ─── Unified HUD Focus (marker hover OR polygon hover → falls back to global stats) ───
   const hudFocus = useMemo(() => {
     if (hoveredCountry) {
       return {
@@ -328,6 +335,7 @@ export function Globe({
         count: hoveredCountry.articleCount,
         sentiment: hoveredCountry.sentiment,
         hasData: true,
+        isGlobal: false,
       }
     }
     if (hoveredPolygonIso) {
@@ -339,10 +347,10 @@ export function Globe({
           count: marker.articleCount,
           sentiment: marker.sentiment,
           hasData: true,
+          isGlobal: false,
         }
       }
       // Country exists in GeoJSON but has no news data
-      // Try to find its name from GeoJSON features
       const feature = countriesGeoJson?.features.find(f => getFeatureIso(f) === hoveredPolygonIso)
       const name = (feature?.properties?.NAME as string) || (feature?.properties?.name as string) || hoveredPolygonIso
       return {
@@ -351,10 +359,28 @@ export function Globe({
         count: 0,
         sentiment: 'neutral' as const,
         hasData: false,
+        isGlobal: false,
       }
     }
-    return null
-  }, [hoveredCountry, hoveredPolygonIso, markersByIso, countriesGeoJson])
+    // Default: show global overview
+    return {
+      name: 'Global Overview',
+      code: 'LIVE',
+      count: countryMarkers.reduce((sum, m) => sum + m.articleCount, 0),
+      sentiment: (() => {
+        const pos = countryMarkers.filter(m => m.sentiment === 'positive').length
+        const neg = countryMarkers.filter(m => m.sentiment === 'negative').length
+        return pos > neg ? 'positive' : neg > pos ? 'negative' : 'neutral'
+      })() as 'positive' | 'negative' | 'neutral',
+      hasData: countryMarkers.length > 0,
+      isGlobal: true,
+    }
+  }, [hoveredCountry, hoveredPolygonIso, markersByIso, countriesGeoJson, countryMarkers])
+
+  // Notify parent when hudFocus changes (for external HUD overlay)
+  useEffect(() => {
+    onHudFocusChange?.(hudFocus)
+  }, [hudFocus, onHudFocusChange])
 
   // Calculate sentiment stats from individual articles (matches badges)
   const sentimentCounts = useMemo(() => {
@@ -414,59 +440,6 @@ export function Globe({
             <div className="w-8 h-8 border-2 border-[var(--primary)] border-t-transparent rounded-full animate-spin" />
             <span className="text-sm text-[var(--muted-foreground)]">Loading news...</span>
           </div>
-        </div>
-      )}
-
-      {/* Categorization progress */}
-      {isCategorizing && categorizationProgress && (
-        <div className="absolute top-4 right-4 z-10 p-3 rounded-lg hud-panel animate-panel-reveal">
-          <div className="flex items-center gap-3">
-            <div className="w-5 h-5 border-2 border-[var(--tropical-teal)] border-t-transparent rounded-full animate-spin" />
-            <div>
-              <p className="text-xs font-medium text-[var(--foreground)]">Categorizing...</p>
-              <p className="text-xs text-[var(--muted-foreground)]">
-                {categorizationProgress.completed}/{categorizationProgress.total}
-              </p>
-            </div>
-          </div>
-          <div className="mt-2 h-1 bg-[var(--hud-surface)] rounded-full overflow-hidden">
-            <div
-              className="h-full bg-gradient-to-r from-[var(--tropical-teal)] to-[var(--neon-ice)] transition-all duration-300"
-              style={{ width: `${(categorizationProgress.completed / categorizationProgress.total) * 100}%` }}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Unified Country Focus HUD cue */}
-      {hudFocus && (
-        <div className="absolute top-4 left-4 z-10 p-3 rounded-sm hud-panel min-w-[180px] animate-panel-reveal border-l-2"
-          style={{ borderLeftColor: hudFocus.hasData ? sentimentColors[hudFocus.sentiment] : 'var(--hud-border)' }}
-        >
-          <div className="flex items-center gap-2 mb-1">
-            <span className="font-mono-hud text-[10px] font-semibold text-[var(--muted-foreground)] uppercase">
-              {hudFocus.code}
-            </span>
-            <span className="text-sm font-semibold text-[var(--foreground)]">
-              {hudFocus.name}
-            </span>
-          </div>
-          {hudFocus.hasData ? (
-            <div className="flex items-center gap-2">
-              <div
-                className="w-2 h-2 rounded-full"
-                style={{ backgroundColor: sentimentColors[hudFocus.sentiment] }}
-              />
-              <p className="text-xs text-[var(--muted-foreground)]">
-                {hudFocus.count} {hudFocus.count === 1 ? 'article' : 'articles'}
-              </p>
-              <span className="text-[10px] text-[var(--muted-foreground)] opacity-60">
-                Click to view
-              </span>
-            </div>
-          ) : (
-            <p className="text-xs text-[var(--muted-foreground)] opacity-60">No data</p>
-          )}
         </div>
       )}
 

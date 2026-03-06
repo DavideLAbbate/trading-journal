@@ -52,7 +52,7 @@ export function GlobalFeed({ articles, onArticleClick }: GlobalFeedProps) {
       </div>
 
       {/* Feed list */}
-      <div className="flex-1 min-h-0 overflow-y-auto p-2 space-y-1">
+      <div className="flex-1 min-h-0 overflow-y-auto hud-scrollbar p-2 space-y-1">
         {filteredArticles.length > 0 ? (
           filteredArticles.map((article) => {
             const sentiment = article.sentiment || 'neutral'

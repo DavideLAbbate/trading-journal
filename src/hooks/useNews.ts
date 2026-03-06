@@ -183,8 +183,9 @@ export function useNews(options: UseNewsOptions = {}): UseNewsReturn {
     refresh: () => {
       categorizingRef.current.clear()
       failedCategorizingRef.current.clear()
+      localArticlesRef.current.clear()
       setLocalArticles(new Map())
-      mutate()
+      void mutate(undefined, { revalidate: true })
     },
     updateArticleSentiment,
   }

@@ -333,12 +333,10 @@
   animation: ticker-scroll 30s linear infinite;
 }
 
-/* Desktop sidebars — display:flex with full height, hidden on mobile */
+/* Desktop sidebars — overlay positioned, hidden on mobile */
 .sidebar-left {
   display: none;
   flex-direction: column;
-  flex-shrink: 0;
-  height: 100%;
 }
 
 @media (min-width: 1024px) {
@@ -350,8 +348,6 @@
 .sidebar-right {
   display: none;
   flex-direction: column;
-  flex-shrink: 0;
-  height: 100%;
 }
 
 @media (min-width: 1280px) {
@@ -470,4 +466,51 @@
 
 .globe-marker.is-hovered .globe-marker-label {
   opacity: 1;
+}
+
+/* HUD badge positioning — offset from sidebar edges */
+/* On mobile: no sidebar → always 1rem from edge */
+/* On lg+: left badge shifts right by left-sidebar width (set via --hud-left-offset) */
+/* On xl+: right badge shifts left by right-sidebar width (set via --hud-right-offset) */
+.hud-badge-left {
+  left: 1rem !important;
+}
+
+@media (min-width: 1024px) {
+  .hud-badge-left {
+    left: var(--hud-left-offset, 1rem) !important;
+  }
+}
+
+.hud-badge-right {
+  right: 1rem !important;
+}
+
+@media (min-width: 1280px) {
+  .hud-badge-right {
+    right: var(--hud-right-offset, 1rem) !important;
+  }
+}
+
+/* Custom thin scrollbar for HUD panels */
+.hud-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(91, 192, 190, 0.25) transparent;
+}
+
+.hud-scrollbar::-webkit-scrollbar {
+  width: 3px;
+}
+
+.hud-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.hud-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(91, 192, 190, 0.25);
+  border-radius: 999px;
+}
+
+.hud-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(91, 192, 190, 0.5);
 }
