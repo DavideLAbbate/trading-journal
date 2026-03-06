@@ -27,37 +27,51 @@ export function MainLayout({ children, header, leftSidebar, rightSidebar, footer
         </div>
       )}
 
-      <div className="flex flex-1 overflow-hidden min-h-0">
-        {/* Left Sidebar slot - Global Feed */}
+      {/* Three-column content row — fills remaining height */}
+      <div className="flex-1 flex overflow-hidden">
+
+        {/* Left sidebar: Global Feed — lg+ only, flex column, full height */}
         {leftSidebar && (
           <aside
-            className={`flex-shrink-0 border-r border-[var(--hud-border)] bg-[var(--hud-surface)] overflow-y-auto hidden lg:block transition-all duration-300 min-h-0 min-w-0 h-full ${
-              panelsVisible ? 'w-72 opacity-100' : 'w-0 opacity-0 overflow-hidden border-r-0'
-            }`}
+            className="sidebar-left bg-[var(--hud-surface)] border-r border-[var(--hud-border)]"
+            style={{
+              width: panelsVisible ? '18rem' : '0',
+              opacity: panelsVisible ? 1 : 0,
+              overflow: 'hidden',
+              transition: 'width 300ms ease, opacity 300ms ease',
+              zIndex: panelsVisible ? 999 : 0
+            }}
           >
-            <div className="w-72 h-full min-h-0">
+            {/* Fixed-width inner so content doesn't reflow during width transition */}
+            <div style={{ width: '18rem', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
               {leftSidebar}
             </div>
           </aside>
         )}
 
-        {/* Main content area */}
-        <main className="flex-1 overflow-hidden relative">
+        {/* Main content */}
+        <main className="flex-1 overflow-hidden relative min-w-0">
           {children}
         </main>
 
-        {/* Right Sidebar slot - Insights */}
+        {/* Right sidebar: Insights — xl+ only, flex column, full height */}
         {rightSidebar && (
           <aside
-            className={`flex-shrink-0 border-l border-[var(--hud-border)] bg-[var(--hud-surface)] overflow-y-auto hidden xl:block transition-all duration-300 min-h-0 min-w-0 h-full ${
-              panelsVisible ? 'w-64 opacity-100' : 'w-0 opacity-0 overflow-hidden border-l-0'
-            }`}
+            className="sidebar-right bg-[var(--hud-surface)] border-l border-[var(--hud-border)]"
+            style={{
+              width: panelsVisible ? '16rem' : '0',
+              opacity: panelsVisible ? 1 : 0,
+              overflow: 'hidden',
+              transition: 'width 300ms ease, opacity 300ms ease',
+              zIndex: panelsVisible ? 999 : 0
+            }}
           >
-            <div className="w-64 h-full min-h-0">
+            <div style={{ width: '16rem', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
               {rightSidebar}
             </div>
           </aside>
         )}
+
       </div>
 
       {/* Footer slot */}

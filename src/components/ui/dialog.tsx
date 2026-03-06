@@ -105,6 +105,39 @@ const DialogDescription = React.forwardRef<
 ))
 DialogDescription.displayName = DialogPrimitive.Description.displayName
 
+// Side drawer variant — no centering transforms, slides in from a side
+interface DrawerContentProps extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> {
+  side?: 'left' | 'right'
+}
+
+const DrawerContent = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Content>,
+  DrawerContentProps
+>(({ className, children, side = 'left', ...props }, ref) => (
+  <DialogPortal>
+    <DialogOverlay />
+    <DialogPrimitive.Content
+      ref={ref}
+      className={cn(
+        'fixed top-0 z-50 h-full w-[85vw] max-w-sm bg-[var(--hud-surface)] p-0 shadow-2xl',
+        'duration-300 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
+        side === 'left'
+          ? 'left-0 border-r border-[var(--hud-border-strong)] data-[state=open]:slide-in-from-left data-[state=closed]:slide-out-to-left'
+          : 'right-0 border-l border-[var(--hud-border-strong)] data-[state=open]:slide-in-from-right data-[state=closed]:slide-out-to-right',
+        className
+      )}
+      {...props}
+    >
+      {children}
+      <DialogPrimitive.Close className="absolute right-4 top-4 rounded-full p-1.5 text-[var(--muted-foreground)] opacity-70 ring-offset-[var(--background)] transition-all hover:opacity-100 hover:bg-[var(--muted)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)] focus:ring-offset-2 disabled:pointer-events-none">
+        <X className="h-4 w-4" />
+        <span className="sr-only">Close</span>
+      </DialogPrimitive.Close>
+    </DialogPrimitive.Content>
+  </DialogPortal>
+))
+DrawerContent.displayName = 'DrawerContent'
+
 export {
   Dialog,
   DialogPortal,
@@ -112,6 +145,7 @@ export {
   DialogTrigger,
   DialogClose,
   DialogContent,
+  DrawerContent,
   DialogHeader,
   DialogFooter,
   DialogTitle,

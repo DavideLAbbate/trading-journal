@@ -1,158 +1,251 @@
-# AGENTS.md - Trading Journal Developer Guide
-
-## Quick Start
-```bash
-npm install
-npm run dev      # Start dev server
-npm run build    # TypeScript + Vite build
-npm run lint     # ESLint
-npm run preview  # Preview production build
-```
+# AGENTS.md — Trading Journal Developer Guide
 
 ## Commands
-| Command | Description |
-|---------|-------------|
-| `npm run dev` | Vite dev server with HMR |
-| `npm run build` | `tsc -b && vite build` |
-| `npm run lint` | ESLint on entire project |
-| `npm run preview` | Preview production build |
 
-### Single Checks
 ```bash
-# Type-check only
-npx tsc --noEmit
-
-# Lint specific file
-npx eslint src/App.tsx
-
-# Lint with auto-fix
-npm run lint -- --fix
+npm install          # Install dependencies
+npm run dev          # Vite dev server with HMR (http://localhost:5173)
+npm run build        # tsc -b && vite build (type-check + bundle)
+npm run lint         # ESLint on entire project
+npm run preview      # Preview production build
 ```
 
-## Testing
-No test script is currently defined in package.json and no test files exist in the project.
+### Targeted checks (prefer these before committing)
 
-If/when tests are added (e.g., Vitest), the expected pattern would be:
 ```bash
-# Add to package.json: 'test': 'vitest run'
-npm test                    # Run all tests
-npm test -- src/hooks/useFetch.test.ts  # Single test file
-npm test -- -t "describe name"           # Run by test name
+npx tsc --noEmit                  # Type-check only, no output
+npx eslint src/components/Foo.tsx # Lint a single file
+npm run lint -- --fix             # Auto-fix lint issues
 ```
 
-## Code Style
+### Testing
 
-### TypeScript
-Strict mode enabled. Use explicit types, `interface` for objects, `type` for unions.
+No test framework is configured. No test files exist. If Vitest is added:
+
+```bash
+# package.json: "test": "vitest run"
+npm test
+npm test -- src/hooks/useNews.test.ts   # single file
+npm test -- -t "filter by sentiment"    # single describe/test
+```
+
+---
+
+## Architecture Overview
+
+```
+src/
+  App.tsx                  # Root: wires useNews → MainLayout + drawers
+  main.tsx                 # Entry point
+  components/
+    layout/
+      MainLayout.tsx       # Three-column shell (left rail | main | right rail)
+      Header.tsx           # Logo, search, panel toggle, drawer triggers
+    hud/
+      GlobalFeed.tsx       # Left sidebar: scrollable article list
+      InsightsPanel.tsx    # Right sidebar: sentiment stats, top countries, keywords
+      TopTicker.tsx        # Horizontal scrolling news ticker
+    ui/                    # Radix UI primitives wrapped with cn() + CVA
+      button.tsx           # CVA variants: default/destructive/outline/secondary/ghost/link
+      dialog.tsx           # DialogContent (centered modal) + DrawerContent (side panel)
+      tabs.tsx, tooltip.tsx, scroll-area.tsx, skeleton.tsx, card.tsx, badge.tsx
+    Globe.tsx              # react-globe.gl 3D globe with marker overlays
+    MarketImpactSidebar.tsx # Slide-in panel on globe marker click
+    NewsModal.tsx          # Article detail modal
+    CountryNewsModal.tsx   # Country-scoped article list modal
+    AnimatedBackground.tsx # Canvas star field
+    charts/
+      SentimentGauge.tsx   # Recharts gauge
+  hooks/
+    useNews.ts             # SWR fetch → RSS parse → AI sentiment enrichment
+    useFetch.ts            # Generic SWR GET + SWRMutation POST/PUT/DELETE
+    useLLM.ts              # Ollama health + generation hook
+    useSentiment.ts        # Per-article sentiment wrapper
+  lib/
+    news.ts                # RSS fetch (CORS proxies), parse, cache, articlesToPoints
+    sentiment.ts           # analyzeSentiment via Ollama LLM
+    llm.ts                 # checkLLMHealth, raw LLM call
+    api.ts                 # axios client (baseURL = VITE_API_BASE_URL || /api)
+    utils.ts               # cn() helper (clsx + tailwind-merge)
+  types/
+    news.ts                # NewsArticle, NewsPoint, NewsCategory, NewsFilters, NewsStats
+  styles/
+    global.css             # Tailwind v4 @import, CSS variables, keyframes, custom classes
+  data/                    # Static seed data (if any)
+```
+
+---
+
+## Tailwind CSS v4 — Critical Rules
+
+This project uses **Tailwind CSS v4** via `@tailwindcss/vite`. Behaviour differs from v3:
+
+- `hidden` compiles to `display: none !important`. It **cannot** be overridden by inline styles or responsive variants like `lg:flex`. Never combine `hidden` with `lg:flex` or `xl:flex` expecting flex layout — use `lg:block` (gives `display:block`, not flex).
+- **Dynamic class names inside template literals are not always scanned.** If a class is only assembled at runtime (e.g. `` `lg:${x}` ``), it will not appear in the compiled CSS. Write full class names as static strings.
+- Arbitrary transition values like `transition-[width,opacity]` may not compile. Use `transition-all`, `transition-opacity`, or standard shorthand utilities instead.
+- For responsive `display:flex` sidebars, define the class in `global.css` directly (plain CSS `@media` block) rather than using Tailwind responsive variants. See `.sidebar-left` / `.sidebar-right` in `src/styles/global.css` as the established pattern.
+
+### Sidebar height pattern
+
+Desktop sidebars require an unbroken `height:100%` chain. The established working pattern:
+
+```tsx
+// global.css defines .sidebar-left { display:none; flex-direction:column; height:100% }
+// @media(min-width:1024px) { .sidebar-left { display:flex } }
+
+<aside className="sidebar-left ..." style={{ width: panelsVisible ? '18rem' : '0', overflow: 'hidden' }}>
+  {/* Fixed-width inner so content doesn't reflow during width transition */}
+  <div style={{ width: '18rem', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+    {/* Component root must use: className="flex flex-col h-full" or flex-1 min-h-0 */}
+    {/* Scrollable child: className="flex-1 min-h-0 overflow-y-auto" */}
+    <Content />
+  </div>
+</aside>
+```
+
+---
+
+## TypeScript
+
+- **Strict mode** + `noUnusedLocals` + `noUnusedParameters` + `verbatimModuleSyntax`.
+- `interface` for object shapes; `type` for unions, aliases, mapped types.
+- Never use `any`. Use `unknown` + type guard when the shape is genuinely unknown.
+- `import type` is **required** for type-only imports (enforced by `verbatimModuleSyntax`).
+
 ```typescript
-interface GlobeProps {
-  className?: string
-  newsPoints: NewsPoint[]
+import type { NewsArticle, NewsPoint } from '../types/news'
+
+interface FeedProps {
+  articles: NewsArticle[]
+  onArticleClick: (article: NewsArticle) => void
+}
+```
+
+---
+
+## Import Order
+
+1. External libraries (`react`, `swr`, `lucide-react`, …)
+2. Internal lib/utils (`../../lib/utils`, `../../lib/news`)
+3. Components (`./Button`, `../layout/Header`)
+4. Types — always `import type` (`../../types/news`)
+
+No path aliases (`@/`) — use relative paths throughout.
+
+---
+
+## Component Conventions
+
+- **Named exports only.** No default exports for components.
+- Props interface declared immediately before the component function.
+- `displayName` required on `forwardRef` components (see `button.tsx`).
+- UI primitives in `src/components/ui/` wrap Radix UI with `cn()` and expose `className` for overrides.
+- CVA (`class-variance-authority`) for components with multiple visual variants.
+
+```typescript
+interface BadgeProps {
+  sentiment: 'positive' | 'negative' | 'neutral'
+  children: React.ReactNode
 }
 
-export function Globe({ className, newsPoints }: GlobeProps) { }
-```
-
-### Imports
-Relative imports. Use `import type` for type-only imports. Order: external libs -> internal lib -> components -> types.
-```typescript
-import { useState } from 'react'
-import GlobeGL from 'react-globe.gl'
-import { sentimentColors } from '../lib/news'
-import { NewsModal } from './NewsModal'
-import type { NewsPoint } from '../types/news'
-```
-
-### Components
-PascalCase, named exports, props interface before component.
-```typescript
-interface ButtonProps {
-  label: string
-  onClick: () => void
-}
-
-export function Button({ label, onClick }: ButtonProps) {
-  return <button onClick={onClick}>{label}</button>
+export function Badge({ sentiment, children }: BadgeProps) {
+  return <span className={cn(badgeVariants({ sentiment }))}>{children}</span>
 }
 ```
 
-### Hooks
-Prefix with `use`, return object with `isLoading`, `isError`, `error`.
+---
+
+## Hooks
+
+- Prefix: `use*`. File name matches hook name (`useNews.ts` exports `useNews`).
+- Return a named object, not a tuple (except SWR/SWRMutation passthrough).
+- Standard return shape for data hooks:
+
 ```typescript
-interface UseFetchReturn<T> {
-  data: T | undefined
+interface UseXxxReturn {
+  data: Xxx[]
   isLoading: boolean
   isError: boolean
   error: Error | null
+  refresh: () => void
 }
 ```
 
-### Error Handling
-Try/catch with `console.error`, return safe fallbacks (`[]` for lists, `null` for objects).
+- SWR key is `null` to disable fetching (not `undefined`, not `false`).
+- News data flows: `useNews` → SWR fetches RSS → `fetchGlobalNews()` in `lib/news.ts` → merges AI sentiment via `localArticles` Map → returns `mergedArticles`.
+
+---
+
+## CSS / Styling
+
+- All colour tokens are CSS custom properties on `:root` in `global.css`. Never hardcode hex values in JSX — use `var(--token-name)` via Tailwind arbitrary syntax `text-[var(--foreground)]`.
+- `cn()` from `src/lib/utils.ts` for conditional class merging (clsx + tailwind-merge).
+- Custom animation classes (`.animate-ticker`, `.feed-row`, `.sidebar-left`, etc.) live in `global.css`, not in component files.
+- Inline `style` is acceptable **only** for animated/dynamic numeric values (width, opacity transitions) or when Tailwind cannot express the value statically.
+
+### Key design tokens
+
+| Token | Value |
+|---|---|
+| `--background` | `#0b132b` (Prussian blue) |
+| `--hud-surface` | `#0d1526` |
+| `--hud-border` | `rgba(91,192,190,0.35)` |
+| `--tropical-teal` | `#5bc0be` (primary accent) |
+| `--neon-ice` | `#6fffe9` (strong accent) |
+| `--foreground` | `#e8f4f8` |
+
+---
+
+## Error Handling
+
+- Async functions: `try/catch`, log with `console.error('context:', err)`, return safe fallback.
+- Lists → `[]`, nullable objects → `null`, booleans → `false`.
+- RSS fetching retries across multiple CORS proxies in sequence (see `lib/news.ts`).
+
 ```typescript
 try {
-  return await fetchData()
+  const result = await analyzeSentiment(article)
+  return result
 } catch (err) {
-  console.error('Failed to fetch:', err)
-  return []
+  console.error('Sentiment analysis failed:', err)
+  return null
 }
 ```
 
-### Data Fetching
-**SWR + axios** - see `src/lib/api.ts` and `src/hooks/useFetch.ts`. API failures return `[]`.
-```typescript
-const { data, isLoading } = useFetch<NewsArticle[]>('/api/news')
-```
+---
 
-### CSS
-**Tailwind CSS 4** with CSS variables. Use `clsx` + `tailwind-merge` via the `cn` helper.
-```typescript
-import { clsx } from 'clsx'
-import { twMerge } from 'tailwind-merge'
+## Data Fetching Patterns
 
-function cn(...inputs: (string | undefined)[]) {
-  return twMerge(clsx(inputs))
-}
-```
+| Use case | Tool |
+|---|---|
+| Read (GET) | `useFetch<T>(url)` — SWR with `revalidateOnFocus: false` |
+| Write (POST) | `usePost<T, P>(url)` — SWRMutation |
+| Update (PUT) | `usePut<T, P>(url)` |
+| Delete | `useDelete<T>(url)` |
+| RSS / external | Direct `fetch` inside SWR fetcher in `lib/news.ts` |
+| LLM / Ollama | `lib/llm.ts` → `lib/sentiment.ts` → `useNews` categorization loop |
 
-### Naming
-| Type | Convention | Example |
-|------|------------|---------|
-| Components | PascalCase | `Globe.tsx` |
-| Hooks | use* + camelCase | `useNews.ts` |
-| Utils | camelCase | `api.ts` |
-| Types | PascalCase | `NewsPoint` |
+SWR deduplication key: `null` disables the request. Use `enabled && condition ? 'key' : null`.
 
-### Environment Variables
-Prefix with `VITE_` in `.env`. Access via `import.meta.env.VITE_xxx`.
+---
 
-## Project Structure
-```
-src/
-  components/
-    ui/       # Radix UI primitives
-    layout/   # Header, MainLayout
-    *.tsx     # Feature components
-  hooks/      # Custom hooks
-  lib/        # Utils, API client
-  types/      # TypeScript definitions
-  data/       # Static data
-  App.tsx     # Root
-  main.tsx    # Entry
-```
+## Environment Variables
 
-## Dependencies
-- React (see package.json) + TypeScript (strict)
-- Vite, Tailwind CSS 4
-- SWR, axios (fetching)
-- Radix UI (dialog, tabs, tooltip)
-- react-globe.gl, Recharts
-- lucide-react (icons)
+Prefix: `VITE_`. Access: `import.meta.env.VITE_XXX`. Defined in `.env` (git-ignored).
 
-## Common Tasks
-**New API Endpoint:** Add to `src/lib/api.ts` or create hook in `src/hooks/`. Use `useFetch` or `usePost`/`usePut`/`useDelete`.
+| Variable | Purpose |
+|---|---|
+| `VITE_API_BASE_URL` | REST API base URL (defaults to `/api`) |
 
-**New UI Component:** Add to `src/components/ui/` if reusable. Use Radix UI primitives when available.
+---
 
-## Cursor / Copilot Rules
-None found. No .cursor/rules/, .cursorrules, or .github/copilot-instructions.md detected.
+## Naming Conventions
+
+| Artefact | Convention | Example |
+|---|---|---|
+| Component file | PascalCase | `GlobalFeed.tsx` |
+| Hook file | camelCase `use*` | `useNews.ts` |
+| Lib/util file | camelCase | `news.ts`, `utils.ts` |
+| Type/interface | PascalCase | `NewsArticle`, `UseNewsReturn` |
+| CSS custom class | kebab-case | `.feed-row`, `.sidebar-left` |
+| CSS variable | `--kebab-case` | `--hud-border-strong` |

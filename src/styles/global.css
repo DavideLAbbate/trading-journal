@@ -333,6 +333,33 @@
   animation: ticker-scroll 30s linear infinite;
 }
 
+/* Desktop sidebars — display:flex with full height, hidden on mobile */
+.sidebar-left {
+  display: none;
+  flex-direction: column;
+  flex-shrink: 0;
+  height: 100%;
+}
+
+@media (min-width: 1024px) {
+  .sidebar-left {
+    display: flex;
+  }
+}
+
+.sidebar-right {
+  display: none;
+  flex-direction: column;
+  flex-shrink: 0;
+  height: 100%;
+}
+
+@media (min-width: 1280px) {
+  .sidebar-right {
+    display: flex;
+  }
+}
+
 /* Compact feed row */
 .feed-row {
   display: flex;

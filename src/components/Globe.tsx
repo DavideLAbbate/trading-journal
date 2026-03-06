@@ -15,6 +15,7 @@ interface GlobeProps {
   isCategorizing?: boolean
   categorizationProgress?: { completed: number; total: number }
   externalArticle?: NewsArticle | null
+  onTogglePanels?: (visible: boolean) => void
 }
 
 /**
@@ -101,6 +102,7 @@ export function Globe({
   isCategorizing,
   categorizationProgress,
   externalArticle,
+  onTogglePanels
 }: GlobeProps) {
   const globeRef = useRef<GlobeMethods | undefined>(undefined)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -536,6 +538,7 @@ export function Globe({
         article={sidebarArticle}
         isOpen={showMarketSidebar}
         onClose={() => {
+          onTogglePanels?.(true)
           setShowMarketSidebar(false)
           setSidebarArticle(null)
         }}

@@ -32,7 +32,7 @@ export function GlobalFeed({ articles, onArticleClick }: GlobalFeedProps) {
   }
 
   return (
-    <div className="flex flex-col h-full min-h-0">
+    <div className="flex flex-col min-h-0">
       {/* Header */}
       <div className="p-3 border-b border-[var(--hud-border)]">
         <h3 className="text-xs font-semibold text-[var(--foreground)] uppercase tracking-wider mb-2">

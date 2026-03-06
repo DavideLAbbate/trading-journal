@@ -6,7 +6,7 @@ import { TopTicker } from './components/hud/TopTicker'
 import { GlobalFeed } from './components/hud/GlobalFeed'
 import { InsightsPanel } from './components/hud/InsightsPanel'
 import { AnimatedBackground } from './components/AnimatedBackground'
-import { Dialog, DialogContent } from './components/ui/dialog'
+import { Dialog, DrawerContent } from './components/ui/dialog'
 import { useNews } from './hooks/useNews'
 import type { NewsArticle } from './types/news'
 
@@ -30,6 +30,7 @@ function App() {
 
   // Handle article click from feed → open MarketImpactSidebar via Globe
   const handleArticleClick = useCallback((article: NewsArticle) => {
+    setPanelsVisible(false);
     setFeedArticle(article)
   }, [])
 
@@ -86,24 +87,25 @@ function App() {
           isCategorizing={isCategorizing}
           categorizationProgress={categorizationProgress}
           externalArticle={feedArticle}
+          onTogglePanels={() => setPanelsVisible(v => !v)}
         />
       </MainLayout>
 
-      {/* Mobile drawers */}
+      {/* Side drawers */}
       <Dialog open={leftDrawerOpen} onOpenChange={setLeftDrawerOpen}>
-        <DialogContent className="left-0 top-0 translate-x-0 translate-y-0 h-full w-[85vw] max-w-sm rounded-none border-r border-[var(--hud-border-strong)] bg-[var(--hud-surface)] p-0">
-          <div className="h-full overflow-y-auto">
+        <DrawerContent side="left">
+          <div className="h-full flex flex-col overflow-hidden">
             {renderLeftSidebar('left-drawer')}
           </div>
-        </DialogContent>
+        </DrawerContent>
       </Dialog>
 
       <Dialog open={rightDrawerOpen} onOpenChange={setRightDrawerOpen}>
-        <DialogContent className="right-0 top-0 translate-x-0 translate-y-0 h-full w-[85vw] max-w-sm rounded-none border-l border-[var(--hud-border-strong)] bg-[var(--hud-surface)] p-0">
-          <div className="h-full overflow-y-auto">
+        <DrawerContent side="right">
+          <div className="h-full flex flex-col overflow-hidden">
             {renderRightSidebar('right-drawer')}
           </div>
-        </DialogContent>
+        </DrawerContent>
       </Dialog>
     </>
   )

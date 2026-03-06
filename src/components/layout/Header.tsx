@@ -118,7 +118,7 @@ export function Header({
             variant="ghost"
             size="icon"
             onClick={onOpenRightDrawer}
-            className="text-[var(--muted-foreground)] hover:text-[var(--foreground)] xl:hidden"
+            className="text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
             title="Open insights"
           >
             <BarChart3 className="w-4 h-4" />
