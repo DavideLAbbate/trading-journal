@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react'
 import { Globe } from './components/Globe'
-import type { HudFocus } from './components/Globe'
+import type { HudFocus, GlobeStats } from './components/Globe'
 import { MainLayout } from './components/layout/MainLayout'
 import { Header } from './components/layout/Header'
 import { TopTicker } from './components/hud/TopTicker'
@@ -22,7 +22,7 @@ function App() {
     refresh,
   } = useNews({ autoCategorize: true })
 
-  // Panel visibility toggle (HUD "Hide panels" control)
+  // Panel visibility toggle
   const [panelsVisible, setPanelsVisible] = useState(true)
   const [leftDrawerOpen, setLeftDrawerOpen] = useState(false)
   const [rightDrawerOpen, setRightDrawerOpen] = useState(false)
@@ -30,7 +30,7 @@ function App() {
   // Feed article → Globe sidebar bridge
   const [feedArticle, setFeedArticle] = useState<NewsArticle | null>(null)
 
-  // HUD focus state lifted from Globe — default to global overview
+  // HUD state lifted from Globe
   const [hudFocus, setHudFocus] = useState<HudFocus>({
     name: 'Global Overview',
     code: 'LIVE',
@@ -39,14 +39,13 @@ function App() {
     hasData: false,
     isGlobal: true,
   })
+  const [globeStats, setGlobeStats] = useState<GlobeStats>({ positive: 0, neutral: 0, negative: 0, countries: 0 })
 
-  // Handle article click from feed → open MarketImpactSidebar via Globe
   const handleArticleClick = useCallback((article: NewsArticle) => {
-    setPanelsVisible(false);
+    setPanelsVisible(false)
     setFeedArticle(article)
   }, [])
 
-  // Get unique country count
   const countryCount = useCallback(() => {
     const countries = new Set(articles.map(a => a.countryCode))
     return countries.size
@@ -67,10 +66,10 @@ function App() {
     />
   )
 
-  // HUD overlay: country focus badge (always visible) + categorizing progress
+  // HUD overlay — z-index 50, above sidebars (z-10)
   const hudOverlay = (
     <>
-      {/* Country Focus badge — positioned just to the right of the left sidebar */}
+      {/* Country Focus badge — top-left, shifts right with left sidebar */}
       <div
         className="absolute top-4 pointer-events-none hud-badge-left"
         style={{
@@ -93,17 +92,12 @@ function App() {
           </div>
           {hudFocus.hasData ? (
             <div className="flex items-center gap-2">
-              <div
-                className="w-2 h-2 rounded-full"
-                style={{ backgroundColor: sentimentColors[hudFocus.sentiment] }}
-              />
+              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: sentimentColors[hudFocus.sentiment] }} />
               <p className="text-xs text-[var(--muted-foreground)]">
                 {hudFocus.count} {hudFocus.count === 1 ? 'article' : 'articles'}
               </p>
               {!hudFocus.isGlobal && (
-                <span className="text-[10px] text-[var(--muted-foreground)] opacity-60">
-                  Click to view
-                </span>
+                <span className="text-[10px] text-[var(--muted-foreground)] opacity-60">Click to view</span>
               )}
             </div>
           ) : (
@@ -112,7 +106,37 @@ function App() {
         </div>
       </div>
 
-      {/* Categorization progress — positioned just to the left of the right sidebar */}
+      {/* Stats counter — bottom-left, shifts right with left sidebar */}
+      {globeStats.countries > 0 && (
+        <div
+          className="absolute bottom-4 pointer-events-none hud-badge-left"
+          style={{
+            zIndex: 50,
+            '--hud-left-offset': panelsVisible ? 'calc(18rem + 1rem)' : '1rem',
+            transition: 'left 300ms ease',
+          } as React.CSSProperties}
+        >
+          <div className="flex items-center gap-2 p-2 rounded-sm hud-panel">
+            <div className="flex items-center gap-1.5 px-2">
+              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: sentimentColors.positive }} />
+              <span className="font-mono-hud text-xs text-[var(--muted-foreground)]">{globeStats.positive}</span>
+            </div>
+            <div className="flex items-center gap-1.5 px-2">
+              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: sentimentColors.neutral }} />
+              <span className="font-mono-hud text-xs text-[var(--muted-foreground)]">{globeStats.neutral}</span>
+            </div>
+            <div className="flex items-center gap-1.5 px-2">
+              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: sentimentColors.negative }} />
+              <span className="font-mono-hud text-xs text-[var(--muted-foreground)]">{globeStats.negative}</span>
+            </div>
+            <span className="font-mono-hud text-xs text-[var(--muted-foreground)] pl-2 border-l border-[var(--hud-border)]">
+              {globeStats.countries} countries
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Categorization progress — top-right, shifts left with right sidebar */}
       {isCategorizing && categorizationProgress && (
         <div
           className="absolute top-4 pointer-events-none animate-panel-reveal hud-badge-right"
@@ -147,11 +171,11 @@ function App() {
   return (
     <>
       <AnimatedBackground />
-      <MainLayout 
+      <MainLayout
         panelsVisible={panelsVisible}
         hudOverlay={hudOverlay}
         header={
-          <Header 
+          <Header
             newsCount={articles.length}
             onRefresh={refresh}
             isLoading={isLoading}
@@ -162,7 +186,7 @@ function App() {
           />
         }
         ticker={
-          <TopTicker 
+          <TopTicker
             articles={articles}
             countryCount={countryCount}
           />
@@ -170,13 +194,14 @@ function App() {
         leftSidebar={renderLeftSidebar('left-rail')}
         rightSidebar={renderRightSidebar('right-rail')}
       >
-        <Globe 
-          className="w-full h-full" 
+        <Globe
+          className="w-full h-full"
           newsPoints={points}
           isLoading={isLoading}
           externalArticle={feedArticle}
           onTogglePanels={() => setPanelsVisible(v => !v)}
           onHudFocusChange={setHudFocus}
+          onStatsChange={setGlobeStats}
         />
       </MainLayout>
 

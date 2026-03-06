@@ -17,6 +17,13 @@ export interface HudFocus {
   isGlobal: boolean
 }
 
+export interface GlobeStats {
+  positive: number
+  neutral: number
+  negative: number
+  countries: number
+}
+
 interface GlobeProps {
   className?: string
   newsPoints: NewsPoint[]
@@ -24,6 +31,7 @@ interface GlobeProps {
   externalArticle?: NewsArticle | null
   onTogglePanels?: (visible: boolean) => void
   onHudFocusChange?: (focus: HudFocus) => void
+  onStatsChange?: (stats: GlobeStats) => void
 }
 
 /**
@@ -110,6 +118,7 @@ export function Globe({
   externalArticle,
   onTogglePanels,
   onHudFocusChange,
+  onStatsChange,
 }: GlobeProps) {
   const globeRef = useRef<GlobeMethods | undefined>(undefined)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -276,7 +285,7 @@ export function Globe({
     setShowMarketSidebar(true)
     setCountryModalOpen(false)
     onTogglePanels?.(false)
-  }, [])
+  }, [onTogglePanels])
 
   // ─── Polygon hover (perf-safe: ref dedup) ───
   const handlePolygonHover = useCallback((feat: object | null) => {
@@ -398,6 +407,14 @@ export function Globe({
     return counts
   }, [countryMarkers])
 
+  // Notify parent when stats change (for external HUD overlay)
+  useEffect(() => {
+    onStatsChange?.({
+      ...sentimentCounts,
+      countries: countryMarkers.length,
+    })
+  }, [sentimentCounts, countryMarkers.length, onStatsChange])
+
   // ─── htmlElementsData: create marker elements ───
   const markerElements = useMemo(() => {
     return countryMarkers.map(marker => ({
@@ -442,27 +459,6 @@ export function Globe({
             <div className="w-8 h-8 border-2 border-[var(--primary)] border-t-transparent rounded-full animate-spin" />
             <span className="text-sm text-[var(--muted-foreground)]">Loading news...</span>
           </div>
-        </div>
-      )}
-
-      {/* Stats overlay - Compact bordered */}
-      {countryMarkers.length > 0 && (
-        <div className="absolute bottom-4 left-4 z-10 flex items-center gap-2 p-2 rounded-sm hud-panel">
-          <div className="flex items-center gap-1.5 px-2">
-            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: sentimentColors.positive }} />
-            <span className="font-mono-hud text-xs text-[var(--muted-foreground)]">{sentimentCounts.positive}</span>
-          </div>
-          <div className="flex items-center gap-1.5 px-2">
-            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: sentimentColors.neutral }} />
-            <span className="font-mono-hud text-xs text-[var(--muted-foreground)]">{sentimentCounts.neutral}</span>
-          </div>
-          <div className="flex items-center gap-1.5 px-2">
-            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: sentimentColors.negative }} />
-            <span className="font-mono-hud text-xs text-[var(--muted-foreground)]">{sentimentCounts.negative}</span>
-          </div>
-          <span className="font-mono-hud text-xs text-[var(--muted-foreground)] pl-2 border-l border-[var(--hud-border)]">
-            {countryMarkers.length} countries
-          </span>
         </div>
       )}
 
