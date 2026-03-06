@@ -62,7 +62,7 @@ export function NewspaperViewer({ open, onClose }: NewspaperViewerProps) {
     if (open) {
       hintTimeoutRef.current = window.setTimeout(() => {
         setShowHint(false)
-      }, 3000)
+      }, isCoarsePointer ? 5000 : 3000)
     } else {
       if (hintTimeoutRef.current) {
         clearTimeout(hintTimeoutRef.current)
@@ -81,7 +81,7 @@ export function NewspaperViewer({ open, onClose }: NewspaperViewerProps) {
         clearTimeout(hintTimeoutRef.current)
       }
     }
-  }, [open])
+  }, [isCoarsePointer, open])
 
   // Keyboard shortcuts
   const handleKeyDown = useCallback(
@@ -251,7 +251,7 @@ export function NewspaperViewer({ open, onClose }: NewspaperViewerProps) {
           )}
           style={{ fontFamily: 'IBM Plex Mono, monospace' }}
         >
-          {isCoarsePointer ? 'Swipe to flip • use +/- to zoom' : 'Drag to flip • scroll or use +/- to zoom'}
+          {isCoarsePointer ? 'Swipe or double-tap a page to flip • use +/- to zoom' : 'Drag to flip • scroll or use +/- to zoom'}
         </div>
       </div>
     </div>

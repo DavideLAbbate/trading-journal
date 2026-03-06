@@ -26,6 +26,7 @@ export function NewspaperBook({
 }: NewspaperBookProps) {
   const isFlipping = flipDirection !== null && flipProgress > 0
   const isClosed = currentPage === 0 && !isFlipping
+  const isOpeningFromClosed = currentPage === 0 && flipDirection === 'forward' && isFlipping
   const shadowIntensity = Math.sin(flipProgress * Math.PI) * 0.32
 
   const leftCount = Math.min(Math.max(currentPage, 0), 6)
@@ -55,6 +56,8 @@ export function NewspaperBook({
 
         {isClosed ? (
           <ClosedJournal pages={pages} isDragging={isDragging} />
+        ) : isOpeningFromClosed ? (
+          <ClosedOpeningSpread pages={pages} flipProgress={flipProgress} />
         ) : (
           <>
             <PageStack side="left" count={leftCount} pageLeft={0} />
@@ -240,6 +243,47 @@ function ClosedJournal({ pages, isDragging }: { pages: NewspaperPage[]; isDraggi
   )
 }
 
+function ClosedOpeningSpread({ pages, flipProgress }: { pages: NewspaperPage[]; flipProgress: number }) {
+  const cover = pages[0]
+  const nextPage = pages[1]
+  const spreadEase = smoothstep(Math.min(1, flipProgress * 1.1))
+  const leftReveal = smoothstep(Math.min(1, Math.max(0, (flipProgress - 0.1) / 0.9)))
+  const rightReveal = smoothstep(Math.min(1, Math.max(0, (flipProgress - 0.18) / 0.82)))
+  const leftPageLeft = CLOSED_LEFT - CLOSED_LEFT * spreadEase
+  const rightPageLeft = CLOSED_LEFT + (PAGE_WIDTH - CLOSED_LEFT) * spreadEase
+
+  return (
+    <>
+      <PageStack side="closed" count={7} pageLeft={CLOSED_LEFT} opacity={1 - spreadEase * 0.9} />
+      <PageStack side="left" count={5} pageLeft={0} opacity={leftReveal} />
+      <PageStack side="right" count={5} pageLeft={PAGE_WIDTH} opacity={rightReveal} />
+
+      {cover && (
+        <PagePlate pageLeft={leftPageLeft} z={1} opacity={leftReveal}>
+          <NewspaperPageFace
+            sections={cover.back}
+            pageNumber={cover.pageNumber}
+            isBack
+            tint={cover.tint}
+          />
+        </PagePlate>
+      )}
+
+      {nextPage && (
+        <PagePlate pageLeft={rightPageLeft} z={1} opacity={rightReveal}>
+          <NewspaperPageFace
+            sections={nextPage.front}
+            pageNumber={nextPage.pageNumber}
+            tint={nextPage.tint}
+          />
+        </PagePlate>
+      )}
+
+      <SpineGlow opacity={0.25 + spreadEase * 0.75} />
+    </>
+  )
+}
+
 function InnerBoard({ pageLeft }: { pageLeft: number }) {
   return (
     <div
@@ -267,7 +311,7 @@ function InnerBoard({ pageLeft }: { pageLeft: number }) {
   )
 }
 
-function SpineGlow() {
+function SpineGlow({ opacity = 0.75 }: { opacity?: number }) {
   return (
     <>
       <div
@@ -279,6 +323,7 @@ function SpineGlow() {
           height: PAGE_HEIGHT,
           background: 'linear-gradient(to right, rgba(0,0,0,0.34), rgba(210,220,228,0.09), rgba(0,0,0,0.34))',
           transform: 'translateZ(6px)',
+          opacity,
         }}
       />
       <div
@@ -291,7 +336,7 @@ function SpineGlow() {
           background: 'linear-gradient(to right, rgba(0,0,0,0.14), rgba(255,255,255,0.015), rgba(0,0,0,0.14))',
           pointerEvents: 'none',
           transform: 'translateZ(10px)',
-          opacity: 0.75,
+          opacity,
         }}
       />
     </>
@@ -319,11 +364,15 @@ function PageStack({
   side,
   count,
   pageLeft,
+  opacity,
 }: {
   side: 'left' | 'right' | 'closed'
   count: number
   pageLeft: number
+  opacity?: number
 }) {
+  const stackOpacity = opacity ?? 1
+
   return (
     <>
       {Array.from({ length: count }).map((_, idx) => {
@@ -344,7 +393,7 @@ function PageStack({
               border: '1px solid rgba(214,221,227,0.05)',
               background: 'linear-gradient(180deg, rgba(208,214,220,0.18), rgba(140,150,160,0.05) 6%, rgba(11,17,26,0.14) 12%, rgba(8,12,20,0.62) 100%)',
               boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.028)',
-              opacity: Math.max(0.07, 0.2 - idx * 0.018),
+              opacity: Math.max(0.07, 0.2 - idx * 0.018) * stackOpacity,
               transform: `translateZ(${z}px)`,
             }}
           >
@@ -370,10 +419,12 @@ function PagePlate({
   children,
   pageLeft,
   z,
+  opacity,
 }: {
   children: ReactNode
   pageLeft: number
   z: number
+  opacity?: number
 }) {
   return (
     <div
@@ -384,6 +435,7 @@ function PagePlate({
         width: PAGE_WIDTH,
         height: PAGE_HEIGHT,
         transform: `translateZ(${z}px)`,
+        opacity: opacity ?? 1,
       }}
     >
       {children}

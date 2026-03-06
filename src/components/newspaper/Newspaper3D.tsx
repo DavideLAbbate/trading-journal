@@ -10,6 +10,12 @@ interface Newspaper3DProps {
 // Minimum horizontal pixels before we count a move as a drag (not a click)
 const DRAG_THRESHOLD = 8
 const FLIP_SPRING = 0.1
+const DOUBLE_TAP_DELAY = 320
+
+function getIsCoarsePointer() {
+  if (typeof window === 'undefined') return false
+  return window.matchMedia('(pointer: coarse)').matches
+}
 
 export function Newspaper3D({ issue, className }: Newspaper3DProps) {
   const pages = issue.pages
@@ -28,7 +34,7 @@ export function Newspaper3D({ issue, className }: Newspaper3DProps) {
   // flipProgress: 0 → 1, always positive
   const [flipProgress, setFlipProgress] = useState(0)
   const [isDragging, setIsDragging] = useState(false)
-  const [isCoarsePointer, setIsCoarsePointer] = useState(false)
+  const [isCoarsePointer, setIsCoarsePointer] = useState(getIsCoarsePointer)
 
   const containerRef = useRef<HTMLDivElement>(null)
   const rafRef = useRef<number>(0)
@@ -37,6 +43,7 @@ export function Newspaper3D({ issue, className }: Newspaper3DProps) {
   const isDragActiveRef = useRef(false)
   const pointerStartXRef = useRef<number | null>(null)
   const activePointerIdRef = useRef<number | null>(null)
+  const lastTapRef = useRef<{ time: number; side: 'left' | 'right' | null }>({ time: 0, side: null })
 
   // Animation refs
   const animProgressRef = useRef(0)
@@ -55,10 +62,9 @@ export function Newspaper3D({ issue, className }: Newspaper3DProps) {
 
   useEffect(() => {
     const updatePointerMode = () => {
-      setIsCoarsePointer(window.matchMedia('(pointer: coarse)').matches)
+      setIsCoarsePointer(getIsCoarsePointer())
     }
 
-    updatePointerMode()
     window.addEventListener('resize', updatePointerMode)
 
     return () => window.removeEventListener('resize', updatePointerMode)
@@ -122,6 +128,25 @@ export function Newspaper3D({ issue, className }: Newspaper3DProps) {
     }
   }, [])
 
+  const canFlip = useCallback((direction: 'forward' | 'backward') => {
+    const page = currentPageRef.current
+    return direction === 'forward' ? page < pages.length - 1 : page > 0
+  }, [pages.length])
+
+  const startProgrammaticFlip = useCallback((direction: 'forward' | 'backward') => {
+    if (!canFlip(direction)) return
+
+    committedRef.current = true
+    flipDirectionRef.current = direction
+    dragSideRef.current = direction === 'forward' ? 'right' : 'left'
+    targetProgressRef.current = 1
+    animProgressRef.current = 0.06
+    setFlipDirection(direction)
+    setFlipProgress(0.06)
+    setIsDragging(false)
+    startAnimation()
+  }, [canFlip, startAnimation])
+
   // Decide whether to commit the flip or snap back
   const resolveFlip = useCallback((liveProgress: number) => {
     const threshold = 0.35
@@ -181,11 +206,29 @@ export function Newspaper3D({ issue, className }: Newspaper3DProps) {
     // At the last page the right side can still exist (single page on right) but no forward flip
     // We'll allow the pointer down but gate the drag below.
 
+    if (isCoarsePointer) {
+      const now = Date.now()
+      const lastTap = lastTapRef.current
+      const direction = clickedSide === 'right' ? 'forward' : 'backward'
+      const isDoubleTap = lastTap.side === clickedSide && now - lastTap.time <= DOUBLE_TAP_DELAY
+
+      lastTapRef.current = { time: now, side: clickedSide }
+
+      if (isDoubleTap && canFlip(direction)) {
+        activePointerIdRef.current = null
+        pointerStartXRef.current = null
+        dragSideRef.current = null
+        isDragActiveRef.current = false
+        startProgrammaticFlip(direction)
+        return
+      }
+    }
+
     dragSideRef.current = clickedSide
     pointerStartXRef.current = e.clientX
     isDragActiveRef.current = false
     activePointerIdRef.current = e.pointerId
-  }, [])
+  }, [canFlip, isCoarsePointer, startProgrammaticFlip])
 
   const handlePointerMove = useCallback((e: PointerEvent) => {
     if (activePointerIdRef.current === null) return
@@ -250,28 +293,12 @@ export function Newspaper3D({ issue, className }: Newspaper3DProps) {
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
       e.preventDefault()
-      if (currentPageRef.current >= pages.length - 1) return
-      committedRef.current = true
-      flipDirectionRef.current = 'forward'
-      dragSideRef.current = 'right'
-      targetProgressRef.current = 1
-      animProgressRef.current = 0.05
-      setFlipDirection('forward')
-      setFlipProgress(0.05)
-      startAnimation()
+      startProgrammaticFlip('forward')
     } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
       e.preventDefault()
-      if (currentPageRef.current <= 0) return
-      committedRef.current = true
-      flipDirectionRef.current = 'backward'
-      dragSideRef.current = 'left'
-      targetProgressRef.current = 1
-      animProgressRef.current = 0.05
-      setFlipDirection('backward')
-      setFlipProgress(0.05)
-      startAnimation()
+      startProgrammaticFlip('backward')
     }
-  }, [pages.length, startAnimation])
+  }, [startProgrammaticFlip])
 
   // All events on window so fast drags never lose the pointer
   useEffect(() => {
@@ -327,7 +354,7 @@ export function Newspaper3D({ issue, className }: Newspaper3DProps) {
         className="mt-2 text-center text-[10px] text-[var(--muted-foreground)] opacity-60 sm:text-xs"
         style={{ fontFamily: 'IBM Plex Mono, monospace' }}
       >
-        {isCoarsePointer ? 'Swipe a page to flip' : 'Drag a page to flip • ← → keys'}
+        {isCoarsePointer ? 'Swipe or double-tap a page to flip' : 'Drag a page to flip • ← → keys'}
       </div>
     </div>
   )
